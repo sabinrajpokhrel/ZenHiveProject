@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.example.zenhive.R
 import kotlinx.coroutines.delay
 
+@SuppressLint("CustomSplashScreen")
 class SplashActivity : ComponentActivity() {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -73,10 +74,7 @@ fun SplashScreen(onTimeout: () -> Unit) {
 }
 
 
-@Composable
-fun Greeting2(name: String, modifier: Modifier = Modifier) {
-    Text(text = "Hello $name!", modifier = modifier)
-}
+
 
 @Preview(showBackground = true)
 @Composable

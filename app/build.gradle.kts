@@ -42,7 +42,7 @@ android {
 
 dependencies {
     implementation("com.google.android.material:material:1.10.0")
-    implementation(libs.androidx.core.ktx)
+    implementation("androidx.core:core-ktx:1.13.1")
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
