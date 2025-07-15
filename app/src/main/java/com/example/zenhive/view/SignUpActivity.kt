@@ -25,7 +25,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.zenhive.R
 
-class Login2 : ComponentActivity() {
+class SignUpActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 //        enableEdgeToEdge()
@@ -42,7 +42,7 @@ class Login2 : ComponentActivity() {
         var lastName by remember { mutableStateOf("") }
         var email by remember { mutableStateOf("") }
         var username by remember { mutableStateOf("") }
-        var password by remember { mutableStateOf("") }
+//        var password by remember { mutableStateOf("") }
 
         Scaffold(
             containerColor = colorResource(id = R.color.loginbgg),
@@ -170,29 +170,29 @@ class Login2 : ComponentActivity() {
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    OutlinedTextField(
-                        value = password,
-                        onValueChange = { password = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Password", fontSize = 14.sp) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        trailingIcon = {
-                            Image(
-                                painter = painterResource(id = R.drawable.eye_off),
-                                modifier = Modifier.size(24.dp),
-                                contentDescription = "Hide password",
+//                    OutlinedTextField(
+//                        value = password,
+//                        onValueChange = { password = it },
+//                        modifier = Modifier.fillMaxWidth(),
+//                        placeholder = { Text("Password", fontSize = 14.sp) },
+//                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+//                        trailingIcon = {
+//                            Image(
+//                                painter = painterResource(id = R.drawable.eye_off),
+//                                modifier = Modifier.size(24.dp),
+//                                contentDescription = "Hide password",
+//
+//                                )
+//                        },
+//                        shape = RoundedCornerShape(10.dp),
+//                        colors = OutlinedTextFieldDefaults.colors(
+//                            unfocusedContainerColor = colorResource(
+//                                R.color.khairo
+//                            )
+//                        )
+//                    )
 
-                                )
-                        },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedContainerColor = colorResource(
-                                R.color.khairo
-                            )
-                        )
-                    )
-
-                    Spacer(modifier = Modifier.height(32.dp))
+//                    Spacer(modifier = Modifier.height(32.dp))
 
                     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                         Button(
