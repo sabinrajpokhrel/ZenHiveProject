@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "514228298551",
+    "firebase_url": "https://zenhive-7c32d-default-rtdb.firebaseio.com",
     "project_id": "zenhive-7c32d",
     "storage_bucket": "zenhive-7c32d.firebasestorage.app"
   },
@@ -12,7 +13,20 @@
           "package_name": "com.example.zenhive"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "514228298551-gcgogm4i1dudm9iqdbkhjq593josbiaq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.zenhive",
+            "certificate_hash": "13a3949d510614a342ece6c003b62d83b5d8dcd3"
+          }
+        },
+        {
+          "client_id": "514228298551-7krkulbvv3cc7sge5241drfvv69o91hb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDTYD08uzRlT__0XJcFPT62QLkeweqWrEM"
@@ -20,7 +34,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "514228298551-7krkulbvv3cc7sge5241drfvv69o91hb.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

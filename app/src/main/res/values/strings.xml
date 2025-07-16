@@ -9,6 +9,7 @@
     <string name="title_activity_register">RegisterActivity</string>
     <string name="prompt_email">Email</string>
     <string name="prompt_password">Password</string>
+    <string name="default_web_client_id">514228298551-gcgogm4i1dudm9iqdbkhjq593josbiaq.apps.googleusercontent.com</string>
     <string name="action_sign_in">Sign In</string>
     <string name="action_sign_in_short">Sign In</string>
     <string name="title_activity_otp_confirm">OtpConfirmActivity</string>

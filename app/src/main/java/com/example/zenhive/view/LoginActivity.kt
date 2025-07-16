@@ -1,6 +1,9 @@
 package com.example.zenhive.view
 
+import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 //import androidx.activity.enableEdgeToEdge
@@ -23,10 +26,16 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.core.content.ContentProviderCompat.requireContext
 import com.example.zenhive.R
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -41,8 +50,14 @@ class LoginActivity : ComponentActivity() {
 
     @Composable
     fun LoginBody(innerPadding: PaddingValues) {
-        var username by remember { mutableStateOf("") }
+        var email by remember { mutableStateOf("") }
         var password by remember { mutableStateOf("") }
+        val coroutineScope = rememberCoroutineScope()
+        var isLoading by remember { mutableStateOf(false) }
+
+        val context = LocalContext.current
+        val activity = context as? Activity
+
 
         Scaffold(
             containerColor = colorResource(id = R.color.loginbgg),
@@ -122,16 +137,17 @@ class LoginActivity : ComponentActivity() {
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // Username Field
+                    // Email Field (was Username)
                     OutlinedTextField(
-                        value = username,
-                        onValueChange = { username = it },
+                        value = email,
+                        onValueChange = { email = it },
                         modifier = Modifier.fillMaxWidth(),
                         placeholder = {
-                            Text("username", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                            Text("Email", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.White)
                         },
-                        textStyle = TextStyle(color = Color.Black),
+                        textStyle = TextStyle(color = Color.White),
                         shape = RoundedCornerShape(20.dp),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                         colors = OutlinedTextFieldDefaults.colors(
                             unfocusedContainerColor = colorResource(id = R.color.khairo),
                             focusedContainerColor = colorResource(id = R.color.khairo)
@@ -148,9 +164,9 @@ class LoginActivity : ComponentActivity() {
                         onValueChange = { password = it },
                         modifier = Modifier.fillMaxWidth(),
                         placeholder = {
-                            Text("password", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                            Text("Password", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.White)
                         },
-                        textStyle = TextStyle(color = Color.Black),
+                        textStyle = TextStyle(color = Color.White),
                         shape = RoundedCornerShape(20.dp),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
@@ -178,7 +194,50 @@ class LoginActivity : ComponentActivity() {
                         contentAlignment = Alignment.Center
                     ) {
                         Button(
-                            onClick = { },
+                            onClick = {
+                                if (email.isBlank() || password.isBlank()) {
+                                    Toast.makeText(context, "Please fill in all fields", Toast.LENGTH_SHORT).show()
+                                    return@Button
+                                }
+
+                                isLoading = true
+                                coroutineScope.launch {
+                                    try {
+                                        val usersRef = com.google.firebase.database.FirebaseDatabase.getInstance().getReference("users")
+                                        val query = usersRef.orderByChild("email").equalTo(email)
+                                        val snapshot = query.get().await()
+
+                                        if (!snapshot.exists()) {
+                                            Toast.makeText(context, "No account found with this email", Toast.LENGTH_LONG).show()
+                                        } else {
+                                            var found = false
+                                            for (child in snapshot.children) {
+                                                val user = child.getValue(com.example.zenhive.model.UserModel::class.java)
+                                                if (user != null) {
+                                                    if (user.password == password) {
+                                                        found = true
+                                                        Toast.makeText(context, "Login successful!", Toast.LENGTH_SHORT).show()
+                                                        // Navigate to ProfileSetup
+                                                        val intent = Intent(context,
+                                                            InterestActivity::class.java)
+                                                        context.startActivity(intent)
+                                                        (context as? Activity)?.finish()
+                                                        break
+                                                    }
+                                                }
+                                            }
+                                            if (!found) {
+                                                Toast.makeText(context, "Incorrect password", Toast.LENGTH_LONG).show()
+                                            }
+                                        }
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "Error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                                    } finally {
+                                        isLoading = false
+
+                                    }
+                                }
+                            },
                             shape = RoundedCornerShape(20.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = colorResource(id = R.color.payalo)),
                             modifier = Modifier
@@ -194,7 +253,7 @@ class LoginActivity : ComponentActivity() {
                         }
                     }
 
-                    Divider(
+                    HorizontalDivider(
                         color = Color.Gray,
                         thickness = 1.dp,
                         modifier = Modifier

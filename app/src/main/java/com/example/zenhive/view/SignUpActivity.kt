@@ -1,9 +1,12 @@
 package com.example.zenhive.view
 
+import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-//import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -22,30 +25,63 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.zenhive.R
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
+import com.example.zenhive.model.UserModel
+import com.example.zenhive.repository.UserRepositoryImplementation
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class SignUpActivity : ComponentActivity() {
+    private lateinit var googleSignInClient: GoogleSignInClient
+    private val userRepository = UserRepositoryImplementation()
+    private val coroutineScope = CoroutineScope(Dispatchers.Main)
+    private lateinit var firebaseAuth: FirebaseAuth
+
+
+
+    private val googleSignInLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val data = result.data
+            val task = GoogleSignIn.getSignedInAccountFromIntent(data)
+            try {
+                val account = task.result
+                firebaseAuthWithGoogle(account)
+            } catch (e: Exception) {
+                Toast.makeText(this, "Google sign in failed: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+            }
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-//        enableEdgeToEdge()
+        firebaseAuth = FirebaseAuth.getInstance()
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(getString(R.string.default_web_client_id))
+            .requestEmail()
+            .build()
+        googleSignInClient = GoogleSignIn.getClient(this, gso)
         setContent {
-            Scaffold { innerPadding ->
-                RegisterBody(innerPadding)
-            }
-        }    }
+            RegisterBody()
+        }
+    }
 
     @Composable
-    fun RegisterBody(innerPadding: PaddingValues) {
-        var firstName by remember { mutableStateOf("") }
-        var lastName by remember { mutableStateOf("") }
-        var phoneNumber by remember { mutableStateOf("") }
-        var username by remember { mutableStateOf("") }
-//        var password by remember { mutableStateOf("") }
+    fun RegisterBody() {
+        var isLoading by remember { mutableStateOf(false) }
+
+
 
         Scaffold(
             containerColor = colorResource(id = R.color.loginbgg),
-        ) { padding ->
+        ) { innerPadding ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -61,13 +97,12 @@ class SignUpActivity : ComponentActivity() {
                         .align(Alignment.BottomCenter),
                     contentScale = ContentScale.Crop
                 )
-
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 32.dp, vertical = 40.dp)
+                        .padding(horizontal = 32.dp, vertical = 40.dp),
+                    verticalArrangement = Arrangement.Top // Fix: Specify vertical arrangement
                 ) {
-                    // Logo & app name
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
@@ -82,9 +117,7 @@ class SignUpActivity : ComponentActivity() {
                                 modifier = Modifier.size(40.dp)
                             )
                         }
-
                         Spacer(modifier = Modifier.width(16.dp))
-
                         Column {
                             Text(
                                 "ZenHive",
@@ -96,7 +129,6 @@ class SignUpActivity : ComponentActivity() {
                         }
                     }
                     Spacer(modifier = Modifier.height(48.dp))
-
                     Text(
                         "Be a part of a global hive!",
                         fontSize = 20.sp,
@@ -104,114 +136,70 @@ class SignUpActivity : ComponentActivity() {
                         color = Color.White
                     )
                     Text("Create your account", fontSize = 14.sp, color = Color.White)
-
                     Spacer(modifier = Modifier.height(32.dp))
-
-                    // Input fields
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedTextField(
-                            value = firstName,
-                            onValueChange = { firstName = it },
-                            modifier = Modifier.weight(1f),
-                            placeholder = { Text("First Name", fontSize = 14.sp) },
-                            shape = RoundedCornerShape(10.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                unfocusedContainerColor = colorResource(
-                                    R.color.khairo
-                                )
-                            )
-                        )
-                        OutlinedTextField(
-                            value = lastName,
-                            onValueChange = { lastName = it },
-                            modifier = Modifier.weight(1f),
-                            placeholder = { Text("Last Name", fontSize = 14.sp) },
-                            shape = RoundedCornerShape(10.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                unfocusedContainerColor = colorResource(
-                                    R.color.khairo
-                                )
-                            )
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    OutlinedTextField(
-                        value = phoneNumber,
-                        onValueChange = { phoneNumber = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Phone Number", fontSize = 14.sp) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedContainerColor = colorResource(
-                                R.color.khairo
-                            )
-                        )
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    OutlinedTextField(
-                        value = username,
-                        onValueChange = { username = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Username", fontSize = 14.sp) },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedContainerColor = colorResource(
-                                R.color.khairo
-                            )
-                        )
-                    )
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-//                    OutlinedTextField(
-//                        value = password,
-//                        onValueChange = { password = it },
-//                        modifier = Modifier.fillMaxWidth(),
-//                        placeholder = { Text("Password", fontSize = 14.sp) },
-//                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-//                        trailingIcon = {
-//                            Image(
-//                                painter = painterResource(id = R.drawable.eye_off),
-//                                modifier = Modifier.size(24.dp),
-//                                contentDescription = "Hide password",
-//
-//                                )
-//                        },
-//                        shape = RoundedCornerShape(10.dp),
-//                        colors = OutlinedTextFieldDefaults.colors(
-//                            unfocusedContainerColor = colorResource(
-//                                R.color.khairo
-//                            )
-//                        )
-//                    )
-
-//                    Spacer(modifier = Modifier.height(32.dp))
-
                     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                         Button(
-                            onClick = { /* Register logic */ },
+                            onClick = {
+                                isLoading = true
+                                val signInIntent = googleSignInClient.signInIntent
+                                googleSignInLauncher.launch(signInIntent)
+                            },
                             shape = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = colorResource(R.color.payalo)),
                             modifier = Modifier
-                                .width(120.dp)
+                                .width(220.dp)
                                 .height(50.dp)
                         ) {
-                            Text(
-                                "Register",
-                                fontSize = 18.sp,
-                                color = Color.Black,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                            if (isLoading) {
+                                CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(24.dp))
+                            } else {
+                                Text(
+                                    "Sign Up with Google",
+                                    fontSize = 18.sp,
+                                    color = Color.Black,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
                         }
-                    }                }            }        }    }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun firebaseAuthWithGoogle(account: GoogleSignInAccount?) {
+        if (account == null) return
+        val credential = GoogleAuthProvider.getCredential(account.idToken, null)
+        firebaseAuth.signInWithCredential(credential)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    val user = firebaseAuth.currentUser
+                    if (user != null) {
+                        // Always fetch the latest password from Firebase if it exists
+                        coroutineScope.launch {
+                            val existingUser = userRepository.getUserByUid(user.uid)
+                            val userModel = UserModel(
+                                uid = user.uid,
+                                displayName = user.displayName,
+                                email = user.email,
+                                photoUrl = user.photoUrl?.toString(),
+                                password = existingUser?.password // preserve password if already set
+                            )
+                            userRepository.createUser(userModel)
+                            val intent = Intent(this@SignUpActivity, SetPasswordActivity::class.java)
+                            intent.putExtra("uid", user.uid)
+                            startActivity(intent)
+                            finish()
+                        }
+                    }
+                } else {
+                    Toast.makeText(this, "Firebase Auth failed: ${task.exception?.localizedMessage}", Toast.LENGTH_LONG).show()
+                }
+            }
+    }
 
     @Preview
     @Composable    fun RegisterPreview() {
-        RegisterBody(innerPadding = PaddingValues(0.dp))
+        RegisterBody()
     }
 }
