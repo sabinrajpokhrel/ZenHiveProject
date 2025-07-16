@@ -41,6 +41,8 @@ class OtpConfirmActivity : ComponentActivity() {
         var otp2 by remember { mutableStateOf("") }
         var otp3 by remember { mutableStateOf("") }
         var otp4 by remember { mutableStateOf("") }
+        var otp5 by remember { mutableStateOf("") }
+        var otp6 by remember { mutableStateOf("") }
 
         Scaffold(
             containerColor = colorResource(id = R.color.loginbgg),
@@ -104,7 +106,7 @@ class OtpConfirmActivity : ComponentActivity() {
                         color = Color.White
                     )
                     Text(
-                        "Enter the 4-digit code sent to your email",
+                        "Enter the 6-digit code sent to your phone number",
                         fontSize = 14.sp,
                         color = Color.White,
                         modifier = Modifier.padding(top = 4.dp)
@@ -112,9 +114,9 @@ class OtpConfirmActivity : ComponentActivity() {
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // OTP input row - 4 separate boxes
+                    // OTP input row - 6 separate boxes
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.align(Alignment.CenterHorizontally)
                     ) {
                         @Composable
@@ -126,8 +128,7 @@ class OtpConfirmActivity : ComponentActivity() {
                                 }
                             },
                             modifier = Modifier
-                                .width(60.dp)
-                                .height(60.dp),
+                                .size(56.dp), // Ensures all boxes are exactly the same size
                             singleLine = true,
                             textStyle = LocalTextStyle.current.copy(
                                 fontSize = 24.sp,
@@ -149,6 +150,8 @@ class OtpConfirmActivity : ComponentActivity() {
                         otpTextField(otp2) { otp2 = it }
                         otpTextField(otp3) { otp3 = it }
                         otpTextField(otp4) { otp4 = it }
+                        otpTextField(otp5) { otp5 = it }
+                        otpTextField(otp6) { otp6 = it }
                     }
 
                     Spacer(modifier = Modifier.height(40.dp))
@@ -157,7 +160,7 @@ class OtpConfirmActivity : ComponentActivity() {
                         Button(
                             onClick = {
                                 // Confirm OTP logic here
-                                val enteredOtp = otp1 + otp2 + otp3 + otp4
+                                val enteredOtp = otp1 + otp2 + otp3 + otp4 + otp5 + otp6
                             },
                             shape = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = colorResource(R.color.payalo)),

@@ -33,14 +33,13 @@ class SignUpActivity : ComponentActivity() {
             Scaffold { innerPadding ->
                 RegisterBody(innerPadding)
             }
-        }
-    }
+        }    }
 
     @Composable
     fun RegisterBody(innerPadding: PaddingValues) {
         var firstName by remember { mutableStateOf("") }
         var lastName by remember { mutableStateOf("") }
-        var email by remember { mutableStateOf("") }
+        var phoneNumber by remember { mutableStateOf("") }
         var username by remember { mutableStateOf("") }
 //        var password by remember { mutableStateOf("") }
 
@@ -96,7 +95,6 @@ class SignUpActivity : ComponentActivity() {
                             Text("choose your hive", fontSize = 14.sp, color = Color.White)
                         }
                     }
-
                     Spacer(modifier = Modifier.height(48.dp))
 
                     Text(
@@ -140,11 +138,11 @@ class SignUpActivity : ComponentActivity() {
                     Spacer(modifier = Modifier.height(20.dp))
 
                     OutlinedTextField(
-                        value = email,
-                        onValueChange = { email = it },
+                        value = phoneNumber,
+                        onValueChange = { phoneNumber = it },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Email", fontSize = 14.sp) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        placeholder = { Text("Phone Number", fontSize = 14.sp) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                         shape = RoundedCornerShape(10.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             unfocusedContainerColor = colorResource(
@@ -210,15 +208,10 @@ class SignUpActivity : ComponentActivity() {
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
-                    }
-                }
-            }
-        }
-    }
+                    }                }            }        }    }
 
     @Preview
-    @Composable
-    fun RegisterPreview() {
+    @Composable    fun RegisterPreview() {
         RegisterBody(innerPadding = PaddingValues(0.dp))
     }
 }

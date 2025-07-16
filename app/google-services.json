@@ -1,33 +1,13 @@
 {
   "project_info": {
-    "project_number": "102101849879",
-    "firebase_url": "https://mobapp-ecfa6-default-rtdb.firebaseio.com",
-    "project_id": "mobapp-ecfa6",
-    "storage_bucket": "mobapp-ecfa6.firebasestorage.app"
+    "project_number": "514228298551",
+    "project_id": "zenhive-7c32d",
+    "storage_bucket": "zenhive-7c32d.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:102101849879:android:481900ac29d98949114952",
-        "android_client_info": {
-          "package_name": "com.example.myapplication"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyDTtEO_qkrziDN3m04gyJ7Tjje1-IYSVbw"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:102101849879:android:4b72a1f3b02bd85c114952",
+        "mobilesdk_app_id": "1:514228298551:android:494cf09dc439bec80af0b2",
         "android_client_info": {
           "package_name": "com.example.zenhive"
         }
@@ -35,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDTtEO_qkrziDN3m04gyJ7Tjje1-IYSVbw"
+          "current_key": "AIzaSyDTYD08uzRlT__0XJcFPT62QLkeweqWrEM"
         }
       ],
       "services": {
