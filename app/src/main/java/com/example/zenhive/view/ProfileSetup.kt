@@ -1,43 +1,36 @@
 package com.example.zenhive.view
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.rememberDatePickerState
+import coil.compose.rememberAsyncImagePainter
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import java.time.format.DateTimeFormatter
+
+
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -45,168 +38,263 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.zenhive.R
+import com.example.zenhive.ui.theme.ZenHiveTheme
 
 class ProfileSetup : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            Scaffold { innerPadding ->
-                RegisterBody(innerPadding)
+            ZenHiveTheme {
+                Scaffold { innerPadding ->
+                    PublicProfileSetup(innerPadding)
+                }
             }
         }
     }
 
-
-//    Profile Setup codes modified
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun RegisterBody(innerPadding: PaddingValues) {
-        var firstName by remember { mutableStateOf("") }
-        var lastName by remember { mutableStateOf("") }
-        var email by remember { mutableStateOf("") }
-        var username by remember { mutableStateOf("") }
-        var password by remember { mutableStateOf("") }
+    fun PublicProfileSetup(innerPadding: PaddingValues = PaddingValues(0.dp)) {
+        val backgroundColor = Color(0xFFF1EAD2) // Match your beige background
+        val fieldColor = Color(0xFFFFF3B0)      // Yellow-ish field bg
+        val labelColor = Color(0xFF555555)
 
-        Box(
+        var name by remember { mutableStateOf("") }
+        var birthday by remember { mutableStateOf("") }
+        var instagram by remember { mutableStateOf("") }
+        var spotify by remember { mutableStateOf("") }
+        var bio by remember { mutableStateOf("") }
+
+        var showDatePicker by remember { mutableStateOf(false) }
+        val datePickerState = rememberDatePickerState()
+
+        var selectedImageUri by remember { mutableStateOf<android.net.Uri?>(null) }
+        val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            selectedImageUri = uri
+        }
+
+        val context = LocalContext.current
+
+        Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(backgroundColor)
                 .padding(innerPadding)
+                .padding(horizontal = 32.dp, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Background shape or image
-            Image(
-                painter = painterResource(id = R.drawable.login_bg),
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(230.dp)
-                    .align(Alignment.BottomCenter),
-                contentScale = ContentScale.Crop
+            Text(
+                text = "Setup your public profile",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                modifier = Modifier.align(Alignment.Start)
             )
 
-            Column(
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Profile photo placeholder
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 32.dp, vertical = 40.dp)
+                    .size(120.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFCCCCCC))
+                    .clickable { galleryLauncher.launch("image/*") },
+                contentAlignment = Alignment.Center
             ) {
-                // Logo & app name
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(70.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(colorResource(id = R.color.payalo)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.logo),
-                            contentDescription = "Logo",
-                            modifier = Modifier.size(40.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    Column {
-                        Text("ZenHive", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                        Text("choose your hive", fontSize = 14.sp, color = Color.White)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(48.dp))
-
-                Text("Be a part of a global hive!", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                Text("Create your account", fontSize = 14.sp, color = Color.White)
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                // Input fields
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedTextField(
-                        value = firstName,
-                        onValueChange = { firstName = it },
-                        modifier = Modifier.weight(1f),
-                        placeholder = { Text("First Name", fontSize = 14.sp) },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = colorResource(
-                            R.color.khairo))
+                if (selectedImageUri != null) {
+                    Image(
+                        painter = rememberAsyncImagePainter(selectedImageUri),
+                        contentDescription = "Profile Photo",
+                        modifier = Modifier.size(120.dp).clip(CircleShape),
+                        contentScale = ContentScale.Crop
                     )
-                    OutlinedTextField(
-                        value = lastName,
-                        onValueChange = { lastName = it },
-                        modifier = Modifier.weight(1f),
-                        placeholder = { Text("Last Name", fontSize = 14.sp) },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = colorResource(
-                            R.color.khairo))
+                } else {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_camera),
+                        contentDescription = "Upload",
+                        tint = Color.DarkGray,
+                        modifier = Modifier.size(48.dp)
                     )
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Email", fontSize = 14.sp) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = colorResource(
-                        R.color.khairo))
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                OutlinedTextField(
-                    value = username,
-                    onValueChange = { username = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Username", fontSize = 14.sp) },
-                    shape = RoundedCornerShape(10.dp),
-                    colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = colorResource(
-                        R.color.khairo))
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Password", fontSize = 14.sp) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    trailingIcon = {
-                        Icon(
-                            painter = painterResource(id = R.drawable.baseline_disabled_visible_24),
-                            contentDescription = "Hide password",
-                            tint = Color.Gray
-                        )
-                    },
-                    shape = RoundedCornerShape(10.dp),
-                    colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = colorResource(
-                        R.color.khairo))
-                )
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Button(
-                        onClick = { /* Register logic */ },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = colorResource(R.color.payalo)),
-                        modifier = Modifier
-                            .width(120.dp)
-                            .height(50.dp)
-                    ) {
-                        Text("Register", fontSize = 18.sp, color = Color.Black, fontWeight = FontWeight.SemiBold)
-                    }
                 }
             }
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            // Full Name Field
+            FieldLabel("What should we call you?", labelColor)
+            CustomInputField(value = name, onValueChange = { name = it }, fieldColor)
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Birthday Field
+            FieldLabel("Enter your birthday", labelColor)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(fieldColor)
+                    .clickable { showDatePicker = true }
+                    .padding(horizontal = 16.dp, vertical = 18.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (birthday.isNotEmpty()) birthday else "Select date",
+                        color = if (birthday.isNotEmpty()) Color.Black else Color.Gray
+                    )
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_calendar),
+                        contentDescription = "Calendar",
+                        tint = Color.Gray,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            FieldLabel("Your Socials", labelColor)
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                CustomInputField(
+                    value = instagram,
+                    onValueChange = { instagram = it },
+                    fieldColor = fieldColor,
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_instagram), // your transparent, small icon
+                            contentDescription = "Instagram",
+                            tint = Color.Gray,
+                            modifier = Modifier.size(40.dp)
+                        )
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+
+                CustomInputField(
+                    value = spotify,
+                    onValueChange = { spotify = it },
+                    fieldColor = fieldColor,
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_spotify), // your transparent, small icon
+                            contentDescription = "Spotify",
+                            tint = Color.Gray,
+                            modifier = Modifier.size(36.dp)
+                        )
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Bio Field
+            FieldLabel("Add your public bio", labelColor)
+            CustomInputField(
+                value = bio,
+                onValueChange = { bio = it },
+                fieldColor = fieldColor,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(100.dp)
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Button(
+                onClick = {
+                    Toast.makeText(context, "Next Page clicked", Toast.LENGTH_SHORT).show()
+                },
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
+                modifier = Modifier
+                    .width(160.dp)
+                    .height(50.dp)
+            ) {
+                Text("Next Page", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            }
         }
+
+        if (showDatePicker) {
+            DatePickerDialog(
+                onDismissRequest = { showDatePicker = false },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showDatePicker = false
+                            datePickerState.selectedDateMillis?.let { millis ->
+                                val localDate = java.time.Instant.ofEpochMilli(millis)
+                                    .atZone(java.time.ZoneId.systemDefault())
+                                    .toLocalDate()
+                                birthday = localDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                            }
+                        }
+                    ) {
+                        Text("OK")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDatePicker = false }) {
+                        Text("Cancel")
+                    }
+                }
+            ) {
+                DatePicker(state = datePickerState)
+            }
+        }
+
     }
+
+    @Composable
+    fun FieldLabel(text: String, color: Color) {
+        Text(
+            text = text,
+            fontSize = 14.sp,
+            color = color,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 4.dp, bottom = 4.dp)
+        )
+    }
+
+    @Composable
+    fun CustomInputField(
+        value: String,
+        onValueChange: (String) -> Unit,
+        fieldColor: Color = Color.White, // default to white background
+        modifier: Modifier = Modifier.fillMaxWidth(),
+        leadingIcon: @Composable (() -> Unit)? = null
+    ) {
+        val borderColor = Color(0xFFFFD600) // Yellow border color
+
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = modifier
+                .clip(RoundedCornerShape(10.dp))
+                .background(color = Color.White),
+            shape = RoundedCornerShape(10.dp),
+            maxLines = 1,
+            leadingIcon = leadingIcon,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = borderColor,
+                unfocusedBorderColor = borderColor,
+                cursorColor = Color.Black
+            )
+        )
+    }
+
 
     @Preview
     @Composable
     fun RegisterPreview() {
-        RegisterBody(innerPadding = PaddingValues(0.dp))
+        PublicProfileSetup(innerPadding = PaddingValues(0.dp))
     }
 }

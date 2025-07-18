@@ -36,6 +36,7 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import androidx.compose.ui.platform.LocalView
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,7 +57,7 @@ class LoginActivity : ComponentActivity() {
         var isLoading by remember { mutableStateOf(false) }
 
         val context = LocalContext.current
-        val activity = context as? Activity
+        android.util.Log.d("LoginDebug", "LoginBody composition with context: $context")
 
 
         Scaffold(
@@ -195,6 +196,7 @@ class LoginActivity : ComponentActivity() {
                     ) {
                         Button(
                             onClick = {
+                                android.util.Log.d("LoginDebug", "Login button clicked")
                                 if (email.isBlank() || password.isBlank()) {
                                     Toast.makeText(context, "Please fill in all fields", Toast.LENGTH_SHORT).show()
                                     return@Button
@@ -203,36 +205,67 @@ class LoginActivity : ComponentActivity() {
                                 isLoading = true
                                 coroutineScope.launch {
                                     try {
+                                        android.util.Log.d("LoginDebug", "Attempting to login with email: $email")
                                         val usersRef = com.google.firebase.database.FirebaseDatabase.getInstance().getReference("users")
-                                        val query = usersRef.orderByChild("email").equalTo(email)
-                                        val snapshot = query.get().await()
+                                        android.util.Log.d("LoginDebug", "Database reference path: ${usersRef.toString()}")
 
-                                        if (!snapshot.exists()) {
-                                            Toast.makeText(context, "No account found with this email", Toast.LENGTH_LONG).show()
-                                        } else {
-                                            var found = false
-                                            for (child in snapshot.children) {
-                                                val user = child.getValue(com.example.zenhive.model.UserModel::class.java)
-                                                if (user != null) {
-                                                    if (user.password == password) {
-                                                        found = true
-                                                        Toast.makeText(context, "Login successful!", Toast.LENGTH_SHORT).show()
-                                                        // Navigate to ProfileSetup
-                                                        val intent = Intent(context,
-                                                            InterestActivity::class.java)
-                                                        context.startActivity(intent)
-                                                        (context as? Activity)?.finish()
-                                                        break
+                                        // Use ValueEventListener for more reliable database access
+                                        usersRef.addListenerForSingleValueEvent(object : com.google.firebase.database.ValueEventListener {
+                                            override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
+                                                android.util.Log.d("LoginDebug", "Database access successful")
+                                                android.util.Log.d("LoginDebug", "Number of users: ${snapshot.childrenCount}")
+
+                                                var userFound = false
+                                                snapshot.children.forEach { child ->
+                                                    val userEmail = child.child("email").value as? String
+                                                    android.util.Log.d("LoginDebug", "Checking user with email: $userEmail")
+
+                                                    if (userEmail == email) {  // Fixed: Using the email from outer scope
+                                                        userFound = true
+                                                        val storedPassword = child.child("password").value as? String
+                                                        android.util.Log.d("LoginDebug", "Found matching email, checking password")
+
+                                                        if (storedPassword == password) {
+                                                            android.util.Log.d("LoginDebug", "Password matched! Starting ProfileSetup activity")
+                                                            runOnUiThread {
+                                                                Toast.makeText(this@LoginActivity, "Login successful!", Toast.LENGTH_SHORT).show()
+                                                                // Start ProfileSetup activity
+                                                                startActivity(Intent(this@LoginActivity,
+                                                                    ProfileSetup::class.java))
+                                                                finish()
+                                                            }
+                                                        } else {
+                                                            android.util.Log.d("LoginDebug", "Password did not match")
+                                                            runOnUiThread {
+                                                                Toast.makeText(this@LoginActivity, "Incorrect password", Toast.LENGTH_LONG).show()
+                                                            }
+                                                        }
+                                                        return@forEach
                                                     }
                                                 }
+
+                                                if (!userFound) {
+                                                    android.util.Log.d("LoginDebug", "No user found with email: $email")
+                                                    runOnUiThread {
+                                                        Toast.makeText(this@LoginActivity, "No account found with this email", Toast.LENGTH_LONG).show()
+                                                    }
+                                                }
+                                                isLoading = false
                                             }
-                                            if (!found) {
-                                                Toast.makeText(context, "Incorrect password", Toast.LENGTH_LONG).show()
+
+                                            override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
+                                                android.util.Log.e("LoginDebug", "Database error: ${error.message}")
+                                                runOnUiThread {
+                                                    Toast.makeText(this@LoginActivity, "Database error: ${error.message}", Toast.LENGTH_LONG).show()
+                                                }
+                                                isLoading = false
                                             }
-                                        }
+                                        })
                                     } catch (e: Exception) {
-                                        Toast.makeText(context, "Error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
-                                    } finally {
+                                        android.util.Log.e("LoginDebug", "Error during login: ${e.message}", e)
+                                        runOnUiThread {
+                                            Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                                        }
                                         isLoading = false
 
                                     }
@@ -277,8 +310,9 @@ class LoginActivity : ComponentActivity() {
 
                         Spacer(modifier = Modifier.height(8.dp))
 
+                        val context = LocalContext.current
                         Button(
-                            onClick = { },
+                            onClick = { context.startActivity(Intent(context, SignUpActivity::class.java)) },
                             shape = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = colorResource(R.color.signupbtn)),
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),

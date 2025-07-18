@@ -39,6 +39,7 @@ import com.example.zenhive.repository.UserRepositoryImplementation
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import com.example.zenhive.ui.theme.ZenHiveTheme
 
 class SignUpActivity : ComponentActivity() {
     private lateinit var googleSignInClient: GoogleSignInClient
@@ -137,7 +138,10 @@ class SignUpActivity : ComponentActivity() {
                     )
                     Text("Create your account", fontSize = 14.sp, color = Color.White)
                     Spacer(modifier = Modifier.height(32.dp))
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Button(
                             onClick = {
                                 isLoading = true
@@ -160,6 +164,39 @@ class SignUpActivity : ComponentActivity() {
                                     fontWeight = FontWeight.SemiBold
                                 )
                             }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(32.dp))
+                    // Already Registered Section (bottom right)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 40.dp, vertical = 20.dp),
+                        horizontalAlignment = Alignment.End
+                    ) {
+                        Text(
+                            text = "Already registered?",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        val context = LocalContext.current
+                        Button(
+                            onClick = {
+                                context.startActivity(Intent(context, LoginActivity::class.java))
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = colorResource(R.color.payalo)),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                            modifier = Modifier.height(36.dp)
+                        ) {
+                            Text(
+                                text = "Login",
+                                color = Color.Black,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }
@@ -198,8 +235,11 @@ class SignUpActivity : ComponentActivity() {
             }
     }
 
-    @Preview
-    @Composable    fun RegisterPreview() {
-        RegisterBody()
+    @Preview(showBackground = true)
+    @Composable
+    fun RegisterPreview() {
+        ZenHiveTheme(darkTheme = false, dynamicColor = false) {
+            RegisterBody()
+        }
     }
 }

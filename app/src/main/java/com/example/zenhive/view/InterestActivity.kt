@@ -71,8 +71,7 @@ fun PreferenceScreen() {
                     modifier = Modifier
                         .width(200.dp)
                         .height(55.dp)
-                        .scale(scale),
-                    // You can add press and release listeners with interactionSource if needed
+                        .scale(scale)
                 ) {
                     Icon(Icons.Default.Person, contentDescription = null, tint = Color.White)
                     Spacer(Modifier.width(8.dp))
@@ -80,10 +79,10 @@ fun PreferenceScreen() {
                 }
             }
         }
-    ) { padding ->
+    ) { paddingValues ->  // Fixed: Renamed padding to paddingValues to avoid naming conflict
         Column(
             modifier = Modifier
-                .padding(padding)
+                .padding(paddingValues)  // Fixed: Using the paddingValues from Scaffold
                 .verticalScroll(scrollState)
                 .padding(20.dp)
         ) {
