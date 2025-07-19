@@ -16,19 +16,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.zenhive.R
+import com.example.zenhive.model.UserModel
 import com.example.zenhive.repository.UserRepository
 import com.example.zenhive.repository.UserRepositoryImplementation
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 class SetPasswordActivity : ComponentActivity() {
     private val userRepository: UserRepository = UserRepositoryImplementation()
@@ -37,19 +38,27 @@ class SetPasswordActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val uid = intent.getStringExtra("uid") ?: ""
+        val email = intent.getStringExtra("email") ?: ""
+
         setContent {
             SetPasswordBody(
                 uid = uid,
+                email = email,
                 coroutineScope = coroutineScope,
                 userRepository = userRepository,
                 showToast = { message ->
                     Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
                 },
-                onPasswordSetSuccess = {
-                    val intent = Intent(this, LoginActivity::class.java)
+                onPasswordSetSuccess = { password ->
+                    val intent = Intent(this, ProfileSetup::class.java).apply {
+                        putExtra("uid", uid)
+                        putExtra("email", email)
+                        putExtra("password", password)  // now password is passed correctly
+                    }
                     startActivity(intent)
                     finish()
                 }
+
             )
         }
     }
@@ -58,14 +67,16 @@ class SetPasswordActivity : ComponentActivity() {
 @Composable
 fun SetPasswordBody(
     uid: String,
+    email: String,
     coroutineScope: CoroutineScope,
     userRepository: UserRepository,
     showToast: (String) -> Unit,
-    onPasswordSetSuccess: () -> Unit
+    onPasswordSetSuccess: (String) -> Unit
 ) {
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
+
 
     Scaffold(
         containerColor = colorResource(id = R.color.loginbgg),
@@ -75,7 +86,6 @@ fun SetPasswordBody(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Background Image (same as SignUp)
             Image(
                 painter = painterResource(id = R.drawable.login_bg),
                 contentDescription = null,
@@ -92,7 +102,6 @@ fun SetPasswordBody(
                     .padding(horizontal = 32.dp, vertical = 40.dp),
                 verticalArrangement = Arrangement.Top
             ) {
-                // Header with logo & title (same style)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
@@ -125,7 +134,6 @@ fun SetPasswordBody(
 
                 Spacer(modifier = Modifier.height(48.dp))
 
-                // Title & subtitle matching SignUp style
                 Text(
                     "Set Your Password",
                     fontSize = 20.sp,
@@ -140,7 +148,6 @@ fun SetPasswordBody(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Password input fields styled same as SignUp's text fields (outlined with background color)
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
@@ -182,14 +189,48 @@ fun SetPasswordBody(
                                 return@Button
                             }
 
-                            isLoading = true
                             coroutineScope.launch {
-                                userRepository.updateUserPassword(uid, password)
-                                isLoading = false
-                                showToast("Password set successfully!")
-                                onPasswordSetSuccess()
+                                isLoading = true
+                                try {
+                                    val firebaseAuth = FirebaseAuth.getInstance()
+                                    val currentUser = firebaseAuth.currentUser
+
+                                    if (currentUser == null) {
+                                        showToast("User not signed in")
+                                        isLoading = false
+                                        return@launch
+                                    }
+
+                                    // ✅ Update password
+                                    currentUser.updatePassword(password).await()
+
+                                    // ✅ Create UserModel with updated password
+                                    val userModel = UserModel(
+                                        uid = currentUser.uid,
+                                        email = currentUser.email,
+                                        password = password, // store hashed or encrypted in production!
+                                        displayName = "",
+                                        photoUrl = "",
+                                        birthdate = "",
+                                        instagram = "",
+                                        spotify = "",
+                                        bio = "",
+                                        interests = emptyList()
+                                    )
+
+                                    userRepository.createUser(userModel)
+
+                                    showToast("Password set successfully!")
+                                    onPasswordSetSuccess(password)
+
+                                } catch (e: Exception) {
+                                    showToast("Failed to set password: ${e.localizedMessage}")
+                                } finally {
+                                    isLoading = false
+                                }
                             }
-                        },
+                        }
+                        ,
                         enabled = !isLoading,
                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = colorResource(R.color.payalo)),
@@ -215,27 +256,4 @@ fun SetPasswordBody(
             }
         }
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun SetPasswordPreview() {
-    val context = LocalContext.current
-    SetPasswordBody(
-        uid = "preview-uid",
-        coroutineScope = CoroutineScope(Dispatchers.Main),
-        userRepository = object : UserRepository {
-            override suspend fun updateUserPassword(uid: String, password: String) {
-                // no-op for preview
-            }
-            override suspend fun createUser(user: com.example.zenhive.model.UserModel) {
-                // no-op for preview
-            }
-            override suspend fun getUserByUid(uid: String): com.example.zenhive.model.UserModel? {
-                return null
-            }
-        },
-        showToast = { msg -> Toast.makeText(context, msg, Toast.LENGTH_SHORT).show() },
-        onPasswordSetSuccess = {}
-    )
 }

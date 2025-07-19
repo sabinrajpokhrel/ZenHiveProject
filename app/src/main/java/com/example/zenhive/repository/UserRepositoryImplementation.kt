@@ -1,22 +1,24 @@
 package com.example.zenhive.repository
 
 import com.example.zenhive.model.UserModel
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 
-class UserRepositoryImplementation : UserRepository {
-    private val dbRef = FirebaseDatabase.getInstance().getReference("users")
+class UserRepositoryImplementation(
+    private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance()
+) : UserRepository {
+
+    // CORRECTLY SPECIFIED DATABASE URL
+    private val dbRef = FirebaseDatabase.getInstance("https://zenhive-7c32d-default-rtdb.firebaseio.com/")
+        .getReference("users")
 
     override suspend fun createUser(user: UserModel) {
         withContext(Dispatchers.IO) {
-            try {
-                // Ensure we're storing the complete user object including password
-                dbRef.child(user.uid).setValue(user).await()
-            } catch (e: Exception) {
-                throw e
-            }
+            dbRef.child(user.uid).setValue(user).await()
         }
     }
 
@@ -33,17 +35,53 @@ class UserRepositoryImplementation : UserRepository {
 
     override suspend fun updateUserPassword(uid: String, newPassword: String) {
         withContext(Dispatchers.IO) {
-            try {
-                // Get current user data
-                val currentUser = getUserByUid(uid)
-                if (currentUser != null) {
-                    // Update the user with new password
-                    val updatedUser = currentUser.copy(password = newPassword)
-                    dbRef.child(uid).setValue(updatedUser).await()
-                }
-            } catch (e: Exception) {
-                throw e
+            val currentUser = getUserByUid(uid)
+            if (currentUser != null) {
+                val updatedUser = currentUser.copy(password = newPassword)
+                dbRef.child(uid).setValue(updatedUser).await()
             }
+        }
+    }
+
+    override suspend fun updateUserProfile(uid: String, updatedUser: UserModel) {
+        withContext(Dispatchers.IO) {
+            dbRef.child(uid).setValue(updatedUser).await()
+        }
+    }
+
+    override suspend fun updateUserBio(uid: String, bio: String) {
+        withContext(Dispatchers.IO) {
+            dbRef.child(uid).child("bio").setValue(bio).await()
+        }
+    }
+
+    override suspend fun updateUserInterests(uid: String, interests: List<String>) {
+        withContext(Dispatchers.IO) {
+            dbRef.child(uid).child("interests").setValue(interests).await()
+        }
+    }
+
+    override suspend fun firebaseAuthWithGoogle(idToken: String): UserModel? {
+        return try {
+            val credential = GoogleAuthProvider.getCredential(idToken, null)
+            val authResult = firebaseAuth.signInWithCredential(credential).await()
+            val user = authResult.user
+            user?.let {
+                UserModel(
+                    uid = it.uid,
+                    displayName = it.displayName,
+                    email = it.email,
+                    photoUrl = it.photoUrl?.toString(),
+                    password = "",
+                    birthdate = "",
+                    instagram = "",
+                    spotify = "",
+                    bio = "",
+                    interests = emptyList()
+                )
+            }
+        } catch (e: Exception) {
+            null
         }
     }
 }

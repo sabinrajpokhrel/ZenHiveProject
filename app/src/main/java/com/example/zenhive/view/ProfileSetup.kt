@@ -1,5 +1,6 @@
 package com.example.zenhive.view
 
+import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -11,19 +12,13 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.rememberDatePickerState
-import coil.compose.rememberAsyncImagePainter
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import java.time.format.DateTimeFormatter
-
-
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,17 +32,35 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.rememberAsyncImagePainter
 import com.example.zenhive.R
+import com.example.zenhive.model.UserModel
+import com.example.zenhive.repository.UserRepository
+import com.example.zenhive.repository.UserRepositoryImplementation
 import com.example.zenhive.ui.theme.ZenHiveTheme
+import kotlinx.coroutines.launch
+import java.time.format.DateTimeFormatter
 
 class ProfileSetup : ComponentActivity() {
+
+    private val userRepository: UserRepository by lazy { UserRepositoryImplementation() }
+    private val uid: String by lazy { intent.getStringExtra("uid") ?: "" }
+    private val email: String by lazy { intent.getStringExtra("email") ?: "" }
+    private val password: String by lazy { intent.getStringExtra("password") ?: "" }
+
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             ZenHiveTheme {
                 Scaffold { innerPadding ->
-                    PublicProfileSetup(innerPadding)
+                    PublicProfileSetup(
+                        uid = uid,
+                        userRepository = userRepository,
+                        innerPadding = innerPadding
+                    )
                 }
             }
         }
@@ -55,26 +68,56 @@ class ProfileSetup : ComponentActivity() {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun PublicProfileSetup(innerPadding: PaddingValues = PaddingValues(0.dp)) {
-        val backgroundColor = Color(0xFFF1EAD2) // Match your beige background
-        val fieldColor = Color(0xFFFFF3B0)      // Yellow-ish field bg
+    fun PublicProfileSetup(
+        uid: String,
+        userRepository: UserRepository,
+        innerPadding: PaddingValues = PaddingValues(0.dp)
+    ) {
+        val backgroundColor = Color(0xFFF1EAD2) // beige background
+        val fieldColor = Color(0xFFFFF3B0)      // yellow field bg
         val labelColor = Color(0xFF555555)
+        val context = LocalContext.current
+        val coroutineScope = rememberCoroutineScope()
 
         var name by remember { mutableStateOf("") }
         var birthday by remember { mutableStateOf("") }
         var instagram by remember { mutableStateOf("") }
         var spotify by remember { mutableStateOf("") }
         var bio by remember { mutableStateOf("") }
+        var photoUri by remember { mutableStateOf<Uri?>(null) }
+        var isLoading by remember { mutableStateOf(false) }
 
         var showDatePicker by remember { mutableStateOf(false) }
         val datePickerState = rememberDatePickerState()
 
-        var selectedImageUri by remember { mutableStateOf<android.net.Uri?>(null) }
+        // Image picker launcher
         val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-            selectedImageUri = uri
+            photoUri = uri
         }
 
-        val context = LocalContext.current
+        // Load existing user data when composable enters composition
+        LaunchedEffect(uid) {
+            if (uid.isNotBlank()) {
+                isLoading = true
+                try {
+                    val existingUser = userRepository.getUserByUid(uid)
+                    existingUser?.let { user ->
+                        name = user.displayName ?: ""
+                        birthday = user.birthdate ?: ""
+                        instagram = user.instagram ?: ""
+                        spotify = user.spotify ?: ""
+                        bio = user.bio ?: ""
+                        user.photoUrl?.let { url ->
+                            photoUri = Uri.parse(url)  // if you store URL as string, convert to Uri here
+                        }
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Failed to load profile: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                } finally {
+                    isLoading = false
+                }
+            }
+        }
 
         Column(
             modifier = Modifier
@@ -101,11 +144,13 @@ class ProfileSetup : ComponentActivity() {
                     .clickable { galleryLauncher.launch("image/*") },
                 contentAlignment = Alignment.Center
             ) {
-                if (selectedImageUri != null) {
+                if (photoUri != null) {
                     Image(
-                        painter = rememberAsyncImagePainter(selectedImageUri),
+                        painter = rememberAsyncImagePainter(photoUri),
                         contentDescription = "Profile Photo",
-                        modifier = Modifier.size(120.dp).clip(CircleShape),
+                        modifier = Modifier
+                            .size(120.dp)
+                            .clip(CircleShape),
                         contentScale = ContentScale.Crop
                     )
                 } else {
@@ -154,7 +199,6 @@ class ProfileSetup : ComponentActivity() {
                 }
             }
 
-
             Spacer(modifier = Modifier.height(16.dp))
 
             FieldLabel("Your Socials", labelColor)
@@ -167,7 +211,7 @@ class ProfileSetup : ComponentActivity() {
                     fieldColor = fieldColor,
                     leadingIcon = {
                         Icon(
-                            painter = painterResource(id = R.drawable.ic_instagram), // your transparent, small icon
+                            painter = painterResource(id = R.drawable.ic_instagram),
                             contentDescription = "Instagram",
                             tint = Color.Gray,
                             modifier = Modifier.size(40.dp)
@@ -182,7 +226,7 @@ class ProfileSetup : ComponentActivity() {
                     fieldColor = fieldColor,
                     leadingIcon = {
                         Icon(
-                            painter = painterResource(id = R.drawable.ic_spotify), // your transparent, small icon
+                            painter = painterResource(id = R.drawable.ic_spotify),
                             contentDescription = "Spotify",
                             tint = Color.Gray,
                             modifier = Modifier.size(36.dp)
@@ -209,15 +253,45 @@ class ProfileSetup : ComponentActivity() {
 
             Button(
                 onClick = {
-                    Toast.makeText(context, "Next Page clicked", Toast.LENGTH_SHORT).show()
+                    coroutineScope.launch {
+                        isLoading = true
+                        try {
+                            // TODO: Upload photoUri to Cloudinary or Firebase Storage, get URL, update photoUrl accordingly
+                            val photoUrl = photoUri?.toString()
+
+                            val updatedUser = UserModel(
+                                uid = uid,
+                                email = email,
+                                displayName = name,
+                                birthdate = birthday,
+                                instagram = instagram,
+                                spotify = spotify,
+                                password = password,
+                                bio = bio,
+                                photoUrl = photoUrl
+                            )
+                            userRepository.updateUserProfile(uid, updatedUser)
+                            Toast.makeText(context, "Profile saved!", Toast.LENGTH_SHORT).show()
+                            // TODO: Navigate to next page if needed
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Failed to save profile: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                        } finally {
+                            isLoading = false
+                        }
+                    }
                 },
                 shape = RoundedCornerShape(24.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
                 modifier = Modifier
                     .width(160.dp)
-                    .height(50.dp)
+                    .height(50.dp),
+                enabled = !isLoading
             ) {
-                Text("Next Page", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                if (isLoading) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                } else {
+                    Text("Save Profile", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                }
             }
         }
 
@@ -248,7 +322,6 @@ class ProfileSetup : ComponentActivity() {
                 DatePicker(state = datePickerState)
             }
         }
-
     }
 
     @Composable
@@ -268,7 +341,7 @@ class ProfileSetup : ComponentActivity() {
     fun CustomInputField(
         value: String,
         onValueChange: (String) -> Unit,
-        fieldColor: Color = Color.White, // default to white background
+        fieldColor: Color = Color.White,
         modifier: Modifier = Modifier.fillMaxWidth(),
         leadingIcon: @Composable (() -> Unit)? = null
     ) {
@@ -287,14 +360,28 @@ class ProfileSetup : ComponentActivity() {
                 focusedBorderColor = borderColor,
                 unfocusedBorderColor = borderColor,
                 cursorColor = Color.Black
-            )
+            ),
+            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text)
         )
     }
 
-
-    @Preview
+    @Preview(showBackground = true)
     @Composable
     fun RegisterPreview() {
-        PublicProfileSetup(innerPadding = PaddingValues(0.dp))
+        ZenHiveTheme {
+            PublicProfileSetup(
+                uid = "preview-uid",
+                userRepository = object : UserRepository {
+                    override suspend fun createUser(user: UserModel) {}
+                    override suspend fun getUserByUid(uid: String): UserModel? = null
+                    override suspend fun updateUserPassword(uid: String, newPassword: String) {}
+                    override suspend fun updateUserProfile(uid: String, updatedUser: UserModel) {}
+                    override suspend fun updateUserBio(uid: String, bio: String) {}
+                    override suspend fun updateUserInterests(uid: String, interests: List<String>) {}
+                    override suspend fun firebaseAuthWithGoogle(idToken: String): UserModel? = null
+                },
+                innerPadding = PaddingValues(0.dp)
+            )
+        }
     }
 }
