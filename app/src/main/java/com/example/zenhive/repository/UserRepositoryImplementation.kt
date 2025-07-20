@@ -56,10 +56,10 @@ class UserRepositoryImplementation(
     }
 
     override suspend fun updateUserInterests(uid: String, interests: List<String>) {
-        withContext(Dispatchers.IO) {
-            dbRef.child(uid).child("interests").setValue(interests).await()
-        }
+        val userRef = FirebaseDatabase.getInstance().getReference("users").child(uid)
+        userRef.child("interests").setValue(interests)
     }
+
 
     override suspend fun firebaseAuthWithGoogle(idToken: String): UserModel? {
         return try {

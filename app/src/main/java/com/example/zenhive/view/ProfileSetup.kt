@@ -1,6 +1,7 @@
 package com.example.zenhive.view
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -88,6 +89,7 @@ class ProfileSetup : ComponentActivity() {
         var instagram by remember { mutableStateOf("") }
         var spotify by remember { mutableStateOf("") }
         var bio by remember { mutableStateOf("") }
+        var interests by remember { mutableStateOf(listOf<String>()) }
         var photoUri by remember { mutableStateOf<Uri?>(null) }
         var isLoading by remember { mutableStateOf(false) }
 
@@ -110,6 +112,7 @@ class ProfileSetup : ComponentActivity() {
                         birthday = user.birthdate ?: ""
                         instagram = user.instagram ?: ""
                         spotify = user.spotify ?: ""
+                        interests = user.interests ?: emptyList()
                         bio = user.bio ?: ""
                         user.photoUrl?.let { url ->
                             photoUri = Uri.parse(url)  // if you store URL as string, convert to Uri here
@@ -281,6 +284,7 @@ class ProfileSetup : ComponentActivity() {
                                 instagram = instagram,
                                 spotify = spotify,
                                 password = password,
+                                interests = emptyList(),
                                 bio = bio,
                                 photoUrl = photoUrl
                             )
@@ -288,7 +292,13 @@ class ProfileSetup : ComponentActivity() {
                             try {
                                 userRepository.updateUserProfile(uid, updatedUser)
                                 Toast.makeText(context, "Profile saved successfully!", Toast.LENGTH_SHORT).show()
-                                // TODO: Navigate to next page if needed
+
+                                // Navigate to InterestActivity
+                                val intent = Intent(context, InterestActivity::class.java).apply {
+                                    putExtra("uid", uid)  // Pass the uid to InterestActivity
+                                }
+                                context.startActivity(intent)
+                                finish() // Close ProfileSetup activity
                             } catch (e: Exception) {
                                 Log.e("ProfileSetup", "Error updating profile: ${e.message}", e)
                                 Toast.makeText(context, "Failed to update profile: ${e.message}", Toast.LENGTH_LONG).show()
@@ -311,7 +321,7 @@ class ProfileSetup : ComponentActivity() {
                 if (isLoading) {
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                 } else {
-                    Text("Save Profile", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Next Page", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
         }

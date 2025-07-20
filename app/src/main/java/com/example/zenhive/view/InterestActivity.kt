@@ -1,6 +1,8 @@
 package com.example.zenhive.view
 
+import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.animateFloatAsState
@@ -18,24 +20,38 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.zenhive.R
+import com.example.zenhive.model.UserModel
+import com.example.zenhive.repository.UserRepository
+import com.example.zenhive.repository.UserRepositoryImplementation
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 class InterestActivity : ComponentActivity() {
+
+    // 1. Get uid passed from intent
+    private val uid: String by lazy { intent.getStringExtra("uid") ?: "" }
+
+    // 2. Initialize repository
+    private val userRepository: UserRepository by lazy { UserRepositoryImplementation() }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            PreferenceScreen()
+            PreferenceScreen(uid = uid, userRepository = userRepository)
         }
     }
 }
 
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun PreferenceScreen() {
+fun PreferenceScreen(uid: String, userRepository: UserRepository) {
     val categories = mapOf(
         "Knowledge" to listOf("Physics", "Space", "Language", "History", "Philosophy", "AI/ML", "Quantum", "Stock Market"),
         "Wellness" to listOf("Fitness", "Yoga", "Journaling", "Mindfulness", "Productivity"),
@@ -46,6 +62,8 @@ fun PreferenceScreen() {
     // Use a Set<String> to hold selected interests and trigger recomposition properly
     val selectedInterests = remember { mutableStateOf(setOf<String>()) }
     val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     // Button press scale animation state
     var isPressed by remember { mutableStateOf(false) }
@@ -65,7 +83,29 @@ fun PreferenceScreen() {
                 contentAlignment = Alignment.Center
             ) {
                 Button(
-                    onClick = { /* Handle navigation */ },
+                    onClick = {
+                        coroutineScope.launch {
+                            try {
+                                userRepository.updateUserInterests(
+                                    uid,
+                                    selectedInterests.value.toList()
+                                )
+                                Toast.makeText(context, "Interests saved!", Toast.LENGTH_SHORT)
+                                    .show()
+
+                                // Navigate to NavigationActivity
+                                val intent = Intent(context, NavigationActivity::class.java)
+                                context.startActivity(intent)
+                                (context as? ComponentActivity)?.finish() // Close InterestActivity
+                            } catch (e: Exception) {
+                                Toast.makeText(
+                                    context,
+                                    "Failed to save interests: ${e.message}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    },
                     shape = RoundedCornerShape(24.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = colorResource(R.color.black)),
                     modifier = Modifier
@@ -178,7 +218,13 @@ fun getColorForInterest(interest: String, selected: Boolean): Color {
 @Preview(showBackground = true)
 @Composable
 fun PreferenceScreenPreview() {
-    MaterialTheme {
-        PreferenceScreen()
-    }
+    PreferenceScreen(uid = "preview-uid", userRepository = object : UserRepository {
+        override suspend fun createUser(user: UserModel) {}
+        override suspend fun getUserByUid(uid: String): UserModel? = null
+        override suspend fun updateUserPassword(uid: String, newPassword: String) {}
+        override suspend fun updateUserProfile(uid: String, updatedUser: UserModel) {}
+        override suspend fun updateUserBio(uid: String, bio: String) {}
+        override suspend fun updateUserInterests(uid: String, interests: List<String>) {}
+        override suspend fun firebaseAuthWithGoogle(idToken: String): UserModel? = null
+    })
 }
