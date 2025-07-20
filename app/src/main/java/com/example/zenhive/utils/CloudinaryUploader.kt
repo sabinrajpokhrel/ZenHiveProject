@@ -13,8 +13,7 @@ import java.io.File
 object CloudinaryUploader {
 
     private const val CLOUD_NAME = "dgodxmwbq"
-    private const val API_KEY = "828591465494872"
-    private const val API_SECRET = "Z-w7NPnyzXogjmyu8DkroKhLmG4"
+    private const val UPLOAD_PRESET = "zenhive_unsigned" // Replace with your actual unsigned upload preset
     private const val UPLOAD_URL = "https://api.cloudinary.com/v1_1/$CLOUD_NAME/image/upload"
 
     private val client = OkHttpClient()
@@ -22,6 +21,10 @@ object CloudinaryUploader {
     suspend fun uploadImage(file: File): String = withContext(Dispatchers.IO) {
         try {
             Log.d("CloudinaryUploader", "Starting upload for file: ${file.absolutePath}")
+            Log.d("CloudinaryUploader", "File exists: ${file.exists()}")
+            Log.d("CloudinaryUploader", "File size: ${file.length()} bytes")
+            Log.d("CloudinaryUploader", "Upload URL: $UPLOAD_URL")
+            Log.d("CloudinaryUploader", "Upload preset: $UPLOAD_PRESET")
 
             if (!file.exists()) {
                 val error = "File does not exist: ${file.absolutePath}"
@@ -35,18 +38,15 @@ object CloudinaryUploader {
                 throw Exception(error)
             }
 
-            Log.d("CloudinaryUploader", "File size: ${file.length()} bytes")
-
             val requestBody = MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
                 .addFormDataPart(
                     "file",
                     file.name,
-                    file.asRequestBody("image/jpeg".toMediaTypeOrNull())
+                    file.asRequestBody("image/*".toMediaTypeOrNull())
                 )
-                .addFormDataPart("upload_preset", "ml_default")
+                .addFormDataPart("upload_preset", UPLOAD_PRESET)
                 .addFormDataPart("cloud_name", CLOUD_NAME)
-                .addFormDataPart("api_key", API_KEY)
                 .build()
 
             val request = Request.Builder()
@@ -58,7 +58,8 @@ object CloudinaryUploader {
 
             client.newCall(request).execute().use { response ->
                 val responseBody = response.body?.string()
-                Log.d("CloudinaryUploader", "Response received: ${response.code} ${response.message}")
+                Log.d("CloudinaryUploader", "Response code: ${response.code}")
+                Log.d("CloudinaryUploader", "Response message: ${response.message}")
                 Log.d("CloudinaryUploader", "Response body: $responseBody")
 
                 if (!response.isSuccessful || responseBody == null) {
@@ -75,7 +76,7 @@ object CloudinaryUploader {
                 } catch (e: Exception) {
                     val error = "Failed to parse response: $responseBody"
                     Log.e("CloudinaryUploader", error, e)
-                    throw Exception(error, e)
+                    throw Exception(error)
                 }
             }
         } catch (e: Exception) {
