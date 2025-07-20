@@ -2,6 +2,7 @@ package com.example.zenhive.view
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -27,56 +28,77 @@ import com.example.zenhive.model.UserModel
 import com.example.zenhive.repository.UserRepositoryImplementation
 import com.example.zenhive.ui.theme.ZenHiveTheme
 import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import com.google.android.gms.common.ConnectionResult
+import com.google.android.gms.common.GoogleApiAvailability
+import kotlinx.coroutines.*
+import kotlinx.coroutines.tasks.await
 
 class SignUpActivity : ComponentActivity() {
 
     private val userRepository = UserRepositoryImplementation()
-    private val coroutineScope = CoroutineScope(Dispatchers.Main)
+    private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
+    private lateinit var googleSignInClient: GoogleSignInClient
+
+    companion object {
+        private const val WEB_CLIENT_ID = "514228298551-7krkulbvv3cc7sge5241drfvv69o91hb.apps.googleusercontent.com"
+        private const val ANDROID_CLIENT_ID = "514228298551-gcgogm4i1dudm9iqdbkhjq593josbiaq.apps.googleusercontent.com"
+    }
 
     private val googleSignInLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            val data = result.data
-            val task = GoogleSignIn.getSignedInAccountFromIntent(data)
-            try {
-                val account = task.result
-                if (account?.idToken != null) {
-                    coroutineScope.launch {
-                        val userModel: UserModel? = userRepository.firebaseAuthWithGoogle(account.idToken!!)
+            Log.d("SignUpActivity", "Sign in result received: ${result.resultCode}")
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+
+            coroutineScope.launch {
+                try {
+                    val account = withContext(Dispatchers.IO) {
+                        withTimeout(60_000) { // 60 seconds timeout
+                            task.await()
+                        }
+                    }
+
+                    Log.d("SignUpActivity", "Got account: ${account.email}")
+
+                    if (account?.idToken != null) {
+                        val userModel = withContext(Dispatchers.IO) {
+                            userRepository.firebaseAuthWithGoogle(account.idToken!!)
+                        }
+
                         if (userModel != null) {
-                            val uid = userModel.uid
-                            val email = userModel.email ?: ""
-
-
                             val intent = Intent(this@SignUpActivity, SetPasswordActivity::class.java).apply {
-                                putExtra("uid", uid)
-                                putExtra("email", email)
+                                putExtra("uid", userModel.uid)
+                                putExtra("email", userModel.email)
                             }
                             startActivity(intent)
                             finish()
                         } else {
                             Toast.makeText(this@SignUpActivity, "Authentication failed", Toast.LENGTH_LONG).show()
                         }
+                    } else {
+                        Toast.makeText(this@SignUpActivity, "Failed to get ID token", Toast.LENGTH_LONG).show()
                     }
-                } else {
-                    Toast.makeText(this, "Google Sign in failed: no ID token", Toast.LENGTH_LONG).show()
+                } catch (e: Exception) {
+                    Log.e("SignUpActivity", "Sign in error", e)
+                    val errorMessage = when {
+                        e is TimeoutCancellationException -> "Sign in timed out. Please check your internet connection."
+                        e.message?.contains("7:") == true -> "Google Play Services error. Please update Google Play Services and try again."
+                        else -> "Sign in error: ${e.message}"
+                    }
+                    Toast.makeText(this@SignUpActivity, errorMessage, Toast.LENGTH_LONG).show()
                 }
-            } catch (e: Exception) {
-                Toast.makeText(this, "Google sign in failed: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
             }
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(getString(R.string.default_web_client_id))
-            .requestEmail()
-            .build()
-        val googleSignInClient = GoogleSignIn.getClient(this, gso)
+        // Check and update Google Play Services
+        checkAndUpdateGooglePlayServices()
+
+        // Configure Google Sign In
+        setupGoogleSignIn()
 
         setContent {
             var isLoading by remember { mutableStateOf(false) }
@@ -201,5 +223,40 @@ class SignUpActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun checkAndUpdateGooglePlayServices() {
+        val googleApiAvailability = GoogleApiAvailability.getInstance()
+        val resultCode = googleApiAvailability.isGooglePlayServicesAvailable(this)
+
+        if (resultCode != ConnectionResult.SUCCESS) {
+            if (googleApiAvailability.isUserResolvableError(resultCode)) {
+                val dialog = googleApiAvailability.getErrorDialog(this, resultCode, 9001)
+                dialog?.show()
+            } else {
+                Toast.makeText(this, "This device is not supported", Toast.LENGTH_LONG).show()
+                finish()
+            }
+        }
+    }
+
+    private fun setupGoogleSignIn() {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(WEB_CLIENT_ID)
+            .requestServerAuthCode(WEB_CLIENT_ID)
+            .requestEmail()
+            .requestProfile()
+            .build()
+
+        googleSignInClient = GoogleSignIn.getClient(this, gso).apply {
+            signOut().addOnCompleteListener {
+                Log.d("SignUpActivity", "Previous sign-in state cleared")
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        coroutineScope.cancel()
     }
 }

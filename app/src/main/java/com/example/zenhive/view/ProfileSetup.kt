@@ -1,7 +1,9 @@
 package com.example.zenhive.view
 
+import android.content.Context
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -38,7 +40,9 @@ import com.example.zenhive.model.UserModel
 import com.example.zenhive.repository.UserRepository
 import com.example.zenhive.repository.UserRepositoryImplementation
 import com.example.zenhive.ui.theme.ZenHiveTheme
+import com.example.zenhive.utils.CloudinaryUploader
 import kotlinx.coroutines.launch
+import java.io.File
 import java.time.format.DateTimeFormatter
 
 class ProfileSetup : ComponentActivity() {
@@ -256,8 +260,18 @@ class ProfileSetup : ComponentActivity() {
                     coroutineScope.launch {
                         isLoading = true
                         try {
-                            // TODO: Upload photoUri to Cloudinary or Firebase Storage, get URL, update photoUrl accordingly
-                            val photoUrl = photoUri?.toString()
+                            var photoUrl: String? = null
+                            if (photoUri != null) {
+                                try {
+                                    val file = uriToFile(context, photoUri!!)
+                                    photoUrl = CloudinaryUploader.uploadImage(file)
+                                } catch (e: Exception) {
+                                    Log.e("ProfileSetup", "Error uploading image: ${e.message}", e)
+                                    Toast.makeText(context, "Failed to upload image: ${e.message}", Toast.LENGTH_LONG).show()
+                                    isLoading = false
+                                    return@launch
+                                }
+                            }
 
                             val updatedUser = UserModel(
                                 uid = uid,
@@ -270,11 +284,18 @@ class ProfileSetup : ComponentActivity() {
                                 bio = bio,
                                 photoUrl = photoUrl
                             )
-                            userRepository.updateUserProfile(uid, updatedUser)
-                            Toast.makeText(context, "Profile saved!", Toast.LENGTH_SHORT).show()
-                            // TODO: Navigate to next page if needed
+
+                            try {
+                                userRepository.updateUserProfile(uid, updatedUser)
+                                Toast.makeText(context, "Profile saved successfully!", Toast.LENGTH_SHORT).show()
+                                // TODO: Navigate to next page if needed
+                            } catch (e: Exception) {
+                                Log.e("ProfileSetup", "Error updating profile: ${e.message}", e)
+                                Toast.makeText(context, "Failed to update profile: ${e.message}", Toast.LENGTH_LONG).show()
+                            }
                         } catch (e: Exception) {
-                            Toast.makeText(context, "Failed to save profile: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                            Log.e("ProfileSetup", "General error: ${e.message}", e)
+                            Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
                         } finally {
                             isLoading = false
                         }
@@ -364,6 +385,41 @@ class ProfileSetup : ComponentActivity() {
             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text)
         )
     }
+
+    fun uriToFile(context: Context, uri: Uri): File {
+        Log.d("ProfileSetup", "Converting URI to file: $uri")
+
+        val contentResolver = context.contentResolver
+        val mimeType = contentResolver.getType(uri)
+        Log.d("ProfileSetup", "File mime type: $mimeType")
+
+        val inputStream = contentResolver.openInputStream(uri)
+            ?: throw Exception("Failed to open input stream for uri: $uri")
+
+        val fileName = "upload_${System.currentTimeMillis()}.${mimeType?.substringAfter('/') ?: "jpg"}"
+        val tempFile = File(context.cacheDir, fileName)
+
+        Log.d("ProfileSetup", "Creating temp file: ${tempFile.absolutePath}")
+
+        tempFile.outputStream().use { outputStream ->
+            inputStream.use { input ->
+                val bytes = input.readBytes()
+                Log.d("ProfileSetup", "Read ${bytes.size} bytes from input stream")
+                outputStream.write(bytes)
+                outputStream.flush()
+            }
+        }
+
+        Log.d("ProfileSetup", "Temp file created. Exists: ${tempFile.exists()}, Size: ${tempFile.length()} bytes")
+
+        if (!tempFile.exists() || tempFile.length() == 0L) {
+            throw Exception("Failed to create file from uri: $uri. File exists: ${tempFile.exists()}, size: ${tempFile.length()}")
+        }
+
+        return tempFile
+    }
+
+
 
     @Preview(showBackground = true)
     @Composable
