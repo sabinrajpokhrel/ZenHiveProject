@@ -445,6 +445,12 @@ class ProfileSetup : ComponentActivity() {
                     override suspend fun updateUserBio(uid: String, bio: String) {}
                     override suspend fun updateUserInterests(uid: String, interests: List<String>) {}
                     override suspend fun firebaseAuthWithGoogle(idToken: String): UserModel? = null
+                    override suspend fun login(
+                        email: String,
+                        password: String
+                    ): UserModel? {
+                        TODO("Not yet implemented")
+                    }
                 },
                 innerPadding = PaddingValues(0.dp)
             )

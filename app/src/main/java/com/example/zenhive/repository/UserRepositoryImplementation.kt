@@ -84,4 +84,30 @@ class UserRepositoryImplementation(
             null
         }
     }
+
+    override suspend fun login(email: String, password: String): UserModel? {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Query users by email
+                val snapshot = dbRef.orderByChild("email").equalTo(email).get().await()
+                if (snapshot.exists()) {
+                    // Iterate over the matched users (should be one if emails are unique)
+                    for (userSnap in snapshot.children) {
+                        val user = userSnap.getValue(UserModel::class.java)
+                        if (user != null) {
+                            // Check password manually
+                            if (user.password == password) {
+                                return@withContext user
+                            }
+                        }
+                    }
+                }
+                null // no user found or password mismatch
+            } catch (e: Exception) {
+                null
+            }
+        }
+    }
+
+
 }

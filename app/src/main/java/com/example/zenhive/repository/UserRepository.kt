@@ -13,4 +13,7 @@ interface UserRepository {
     suspend fun updateUserInterests(uid: String, interests: List<String>)
     suspend fun firebaseAuthWithGoogle(idToken: String): UserModel?
 
+
+    suspend fun login(email: String, password: String): UserModel?
+
 }

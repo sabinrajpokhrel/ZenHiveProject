@@ -13,4 +13,5 @@
     <string name="action_sign_in">Sign In</string>
     <string name="action_sign_in_short">Sign In</string>
     <string name="title_activity_otp_confirm">OtpConfirmActivity</string>
+    <string name="title_activity_hive">HiveActivity</string>
 </resources>
