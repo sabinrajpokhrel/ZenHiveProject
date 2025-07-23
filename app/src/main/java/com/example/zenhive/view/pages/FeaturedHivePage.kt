@@ -17,7 +17,12 @@ import androidx.compose.foundation.lazy.items
 import com.example.zenhive.ui.components.HiveCard
 import com.example.zenhive.viewmodel.HiveViewModel
 import com.example.zenhive.R // 👈 Needed for placeholder image
+import com.example.zenhive.ui.components.LogoButton
+import androidx.compose.runtime.*
+import com.google.firebase.database.FirebaseDatabase
 
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FeaturedHivesPage() {
     val scrollState = rememberScrollState()
@@ -25,67 +30,99 @@ fun FeaturedHivesPage() {
     val hiveViewModel: HiveViewModel = viewModel()
     val liveHives by hiveViewModel.liveHives.collectAsState()
 
-    Column(
-        modifier = Modifier
-            .padding(16.dp)
-            .padding(bottom = 80.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Row(
-            modifier = Modifier.horizontalScroll(scrollState),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Button(
-                onClick = { activePage = "hives" },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (activePage == "hives") Color(0xFFFBC125) else Color.DarkGray,
-                    contentColor = if (activePage == "hives") Color.Black else Color.White
-                ),
-                shape = RoundedCornerShape(30.dp)
-            ) {
-                Text("Explore Hives")
-            }
-            Button(
-                onClick = { activePage = "people" },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (activePage == "people") Color(0xFFFBC125) else Color.DarkGray,
-                    contentColor = if (activePage == "people") Color.Black else Color.White
-                ),
-                shape = RoundedCornerShape(30.dp)
-            ) {
-                Text("Meet People")
-            }
+    val photoCache = remember { mutableStateMapOf<String, String?>() }
+
+
+    // heklper function
+    fun loadCreatorPhotoUrl(hostId: String) {
+        if (photoCache.containsKey(hostId)) return
+
+        val userRef = FirebaseDatabase.getInstance().getReference("users").child(hostId)
+        userRef.child("photoUrl").get().addOnSuccessListener { snapshot ->
+            val url = snapshot.getValue(String::class.java)
+            photoCache[hostId] = url
+        }.addOnFailureListener {
+            photoCache[hostId] = null
         }
+    }
 
-        if (activePage == "hives") {
-            Text(
-                "Discover, Connect & Grow",
-                color = Color.White,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold
+
+
+    Scaffold(
+        containerColor = Color(0xFF1C1C1C),
+        floatingActionButton = {
+            LogoButton(
+                onExploreClick = { /* Already on Featured Hives */ }
             )
-
-            Text(
-                "Find curated sessions and people that match your curiosity.",
-                color = Color.Gray,
-                fontSize = 14.sp
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+        },
+        floatingActionButtonPosition = FabPosition.Center
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.horizontalScroll(scrollState),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(liveHives.sortedByDescending { it.timestamp }) { hive ->
-                HiveCard(
-                        title = hive.title,
-                        creator = listOf(R.drawable.person), // Placeholder image // change this later
-                        membersCount = hive.participants.size
-                    )
+                Button(
+                    onClick = { activePage = "hives" },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (activePage == "hives") Color(0xFFFBC125) else Color.DarkGray,
+                        contentColor = if (activePage == "hives") Color.Black else Color.White
+                    ),
+                    shape = RoundedCornerShape(30.dp)
+                ) {
+                    Text("Explore Hives")
+                }
+                Button(
+                    onClick = { activePage = "people" },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (activePage == "people") Color(0xFFFBC125) else Color.DarkGray,
+                        contentColor = if (activePage == "people") Color.Black else Color.White
+                    ),
+                    shape = RoundedCornerShape(30.dp)
+                ) {
+                    Text("Meet People")
                 }
             }
-        } else {
-            PeoplePage()
+
+            if (activePage == "hives") {
+                Text(
+                    "Discover, Connect & Grow",
+                    color = Color.White,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    "Find curated sessions and people that match your curiosity.",
+                    color = Color.Gray,
+                    fontSize = 14.sp
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(liveHives.sortedByDescending { it.timestamp }) { hive ->
+                        LaunchedEffect(hive.hostUid) {
+                            loadCreatorPhotoUrl(hive.hostUid)
+                        }
+                        HiveCard(
+                            title = hive.title,
+                            creatorPhotoUrl = photoCache[hive.hostUid], // Placeholder image // change this later
+                            membersCount = hive.participants.size
+                        )
+                    }
+                }
+            } else {
+                PeoplePage()
+            }
         }
     }
 }

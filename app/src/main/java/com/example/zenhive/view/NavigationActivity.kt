@@ -19,12 +19,17 @@ import androidx.compose.ui.unit.dp
 import com.example.zenhive.R
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.ui.layout.ContentScale
 import com.example.zenhive.view.pages.ProfilePage
 import com.example.zenhive.view.pages.FeaturedHivesPage
 import com.example.zenhive.view.pages.PeoplePage
 import com.example.zenhive.view.pages.NotificationPage
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.example.zenhive.ui.components.LogoButton
+import com.example.zenhive.viewmodel.UserViewModel
+import com.google.firebase.auth.FirebaseAuth
 
 class NavigationActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -129,7 +134,11 @@ fun NavigationBody() {
             var showPage = true
             when (selectedIndex) {
                 1 -> {
-                    NotificationPage()
+                    NotificationPage(
+                        onNavigateToFeaturedHives = {
+                            selectedIndex = 0
+                        }
+                    )
                 }
                 4 -> {
                     ProfilePage(
@@ -140,19 +149,17 @@ fun NavigationBody() {
                 }
                 else -> {
                     when (pageToShow) {
-                        "notification" -> NotificationPage()
+                        "notification" -> NotificationPage(
+                            onNavigateToFeaturedHives = {
+                                selectedIndex = 0
+                            }
+                        )
                         "hives" -> FeaturedHivesPage()
                         "people" -> PeoplePage()
                         else -> FeaturedHivesPage()
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            LogoButton(
-                onExploreClick = { selectedIndex = 0 }
-            )
         }
     }
 }
@@ -162,11 +169,34 @@ fun NavigationBody() {
 @Composable
 fun TopNavBar(
     onSearchClick: () -> Unit,
-
     onNotificationClick: () -> Unit, // not used now, but keep to match your signature
     onNavItemClick: (Int) -> Unit
 ) {
 //    var profileMenuExpanded by remember { mutableStateOf(false) }
+    val userViewModel: UserViewModel = viewModel()
+    val user by userViewModel.user.collectAsState()
+    val context = LocalContext.current
+    var userPhotoUrl by remember { mutableStateOf<String?>(null) }
+
+    // Fetch UID from SharedPreferences or FirebaseAuth
+    val sharedPref = context.getSharedPreferences("user_prefs", android.content.Context.MODE_PRIVATE)
+    val sharedPrefUid = sharedPref.getString("uid", null)
+    val userId = sharedPrefUid ?: FirebaseAuth.getInstance().currentUser?.uid
+
+    // Fetch photoUrl from Firebase
+    LaunchedEffect(userId) {
+        if (userId != null) {
+            com.google.firebase.database.FirebaseDatabase.getInstance().getReference("users/$userId/photoUrl")
+                .addListenerForSingleValueEvent(object : com.google.firebase.database.ValueEventListener {
+                    override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
+                        userPhotoUrl = snapshot.getValue(String::class.java)
+                    }
+                    override fun onCancelled(error: com.google.firebase.database.DatabaseError) {}
+                })
+        } else {
+            userPhotoUrl = null
+        }
+    }
 
     TopAppBar(
         title = {
@@ -185,31 +215,28 @@ fun TopNavBar(
                     contentDescription = "Notifications"
                 )
             }
-
             Box {
                 IconButton(onClick = { onNavItemClick(4) }) {
-                    Image(
-                        painter = painterResource(id = R.drawable.person),
-                        contentDescription = "Profile",
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape) // Make the profile icon circular
-                    )
+                    if (userPhotoUrl != null && userPhotoUrl!!.isNotEmpty()) {
+                        AsyncImage(
+                            model = userPhotoUrl,
+                            contentDescription = "Profile",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                        )
+                    } else {
+                        Image(
+                            painter = painterResource(id = R.drawable.person),
+                            contentDescription = "Profile",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                        )
+                    }
                 }
-
-//                DropdownMenu(
-//                    expanded = profileMenuExpanded,
-//                    onDismissRequest = { profileMenuExpanded = false }
-//                ) {
-//                    DropdownMenuItem(
-//                        text = { Text("Account Settings") },
-//                        onClick = { profileMenuExpanded = false }
-//                    )
-//                    DropdownMenuItem(
-//                        text = { Text("Logout") },
-//                        onClick = { profileMenuExpanded = false }
-//                    )
-//                }
             }
         }
     )
