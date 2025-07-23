@@ -37,6 +37,11 @@ android {
     buildFeatures {
         compose = true
     }
+    sourceSets {
+        getByName("main") {
+            jniLibs.srcDirs("libs")
+        }
+    }
 }
 
 dependencies {
@@ -56,6 +61,9 @@ dependencies {
     implementation("com.google.firebase:firebase-database-ktx")
     implementation("com.google.android.gms:play-services-auth:20.7.0")
     implementation("com.google.firebase:firebase-auth-ktx")
+    implementation(files("libs/ZegoExpressEngine.aar"))
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+
 
     // Updated Cloudinary with exclusions
     implementation("com.cloudinary:cloudinary-android:1.24.0") {
@@ -74,6 +82,7 @@ dependencies {
     implementation("com.squareup.okhttp3:logging-interceptor:4.10.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.0")
+    implementation("androidx.navigation:navigation-compose:2.7.5")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

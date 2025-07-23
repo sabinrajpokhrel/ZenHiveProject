@@ -28,11 +28,11 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun HiveCard(
-    category: String,
+
     title: String,
-    creators: List<Int>,
+    creator: List<Int>,
     membersCount: Int,
-    commentsCount: Int
+
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -42,12 +42,11 @@ fun HiveCard(
             .padding(vertical = 8.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(category, color = Color.Gray, fontSize = 12.sp)
             Spacer(modifier = Modifier.height(6.dp))
             Text(title, color = Color.Black, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                creators.forEach { id ->
+                creator.forEach { id ->
                     Image(
                         painter = painterResource(id = id),
                         contentDescription = "Creator",
@@ -60,7 +59,6 @@ fun HiveCard(
                 Spacer(modifier = Modifier.width(12.dp))
                 Text("👥 $membersCount", fontSize = 12.sp)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("💬 $commentsCount", fontSize = 12.sp)
                 Spacer(modifier = Modifier.weight(1f))
                 Button(
                     onClick = { /* handle join */ },
