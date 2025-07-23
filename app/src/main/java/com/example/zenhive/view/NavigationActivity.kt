@@ -134,7 +134,11 @@ fun NavigationBody() {
             var showPage = true
             when (selectedIndex) {
                 1 -> {
-                    NotificationPage()
+                    NotificationPage(
+                        onNavigateToFeaturedHives = {
+                            selectedIndex = 0
+                        }
+                    )
                 }
                 4 -> {
                     ProfilePage(
@@ -145,19 +149,17 @@ fun NavigationBody() {
                 }
                 else -> {
                     when (pageToShow) {
-                        "notification" -> NotificationPage()
+                        "notification" -> NotificationPage(
+                            onNavigateToFeaturedHives = {
+                                selectedIndex = 0
+                            }
+                        )
                         "hives" -> FeaturedHivesPage()
                         "people" -> PeoplePage()
                         else -> FeaturedHivesPage()
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            LogoButton(
-                onExploreClick = { selectedIndex = 0 }
-            )
         }
     }
 }

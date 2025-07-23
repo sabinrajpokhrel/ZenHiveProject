@@ -21,19 +21,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import com.example.zenhive.R
 
 @Composable
 fun HiveCard(
-
     title: String,
-    creator: List<Int>,
+    creatorPhotoUrl: String?,
     membersCount: Int,
+)
+{
 
-) {
+
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF5D6)),
@@ -46,16 +50,26 @@ fun HiveCard(
             Text(title, color = Color.Black, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                creator.forEach { id ->
-                    Image(
-                        painter = painterResource(id = id),
-                        contentDescription = "Creator",
+                if (!creatorPhotoUrl.isNullOrEmpty()) {
+                    AsyncImage(
+                        model = creatorPhotoUrl,
+                        contentDescription = "Creator Photo",
+                        contentScale = ContentScale.Crop,
                         modifier = Modifier
                             .size(28.dp)
-                            .padding(end = 4.dp)
+                            .clip(RoundedCornerShape(50))
+                    )
+                } else {
+                    Image(
+                        painter = painterResource(id = R.drawable.person), // fallback image
+                        contentDescription = "Default Creator",
+                        modifier = Modifier
+                            .size(28.dp)
                             .clip(RoundedCornerShape(50))
                     )
                 }
+
+
                 Spacer(modifier = Modifier.width(12.dp))
                 Text("👥 $membersCount", fontSize = 12.sp)
                 Spacer(modifier = Modifier.width(8.dp))

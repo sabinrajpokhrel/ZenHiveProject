@@ -18,6 +18,9 @@ import com.example.zenhive.ui.components.HiveCard
 import com.example.zenhive.viewmodel.HiveViewModel
 import com.example.zenhive.R // 👈 Needed for placeholder image
 import com.example.zenhive.ui.components.LogoButton
+import androidx.compose.runtime.*
+import com.google.firebase.database.FirebaseDatabase
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,6 +29,24 @@ fun FeaturedHivesPage() {
     var activePage by remember { mutableStateOf("hives") }
     val hiveViewModel: HiveViewModel = viewModel()
     val liveHives by hiveViewModel.liveHives.collectAsState()
+
+    val photoCache = remember { mutableStateMapOf<String, String?>() }
+
+
+    // heklper function
+    fun loadCreatorPhotoUrl(hostId: String) {
+        if (photoCache.containsKey(hostId)) return
+
+        val userRef = FirebaseDatabase.getInstance().getReference("users").child(hostId)
+        userRef.child("photoUrl").get().addOnSuccessListener { snapshot ->
+            val url = snapshot.getValue(String::class.java)
+            photoCache[hostId] = url
+        }.addOnFailureListener {
+            photoCache[hostId] = null
+        }
+    }
+
+
 
     Scaffold(
         containerColor = Color(0xFF1C1C1C),
@@ -38,9 +59,9 @@ fun FeaturedHivesPage() {
     ) { paddingValues ->
         Column(
             modifier = Modifier
+                .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp)
-                .padding(bottom = 80.dp),
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Row(
@@ -89,9 +110,12 @@ fun FeaturedHivesPage() {
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(liveHives.sortedByDescending { it.timestamp }) { hive ->
-                    HiveCard(
+                        LaunchedEffect(hive.hostUid) {
+                            loadCreatorPhotoUrl(hive.hostUid)
+                        }
+                        HiveCard(
                             title = hive.title,
-                            creator = listOf(R.drawable.person), // Placeholder image // change this later
+                            creatorPhotoUrl = photoCache[hive.hostUid], // Placeholder image // change this later
                             membersCount = hive.participants.size
                         )
                     }

@@ -11,13 +11,12 @@ import com.example.zenhive.ui.components.LogoButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NotificationPage() {
+fun NotificationPage(onNavigateToFeaturedHives: () -> Unit = {}) {
     Scaffold(
         containerColor = Color(0xFF1C1C1C),
         floatingActionButton = {
             LogoButton(
-                onExploreClick = { /* Navigate to Featured Hives */ }
-            )
+                onExploreClick = onNavigateToFeaturedHives)
         },
         floatingActionButtonPosition = FabPosition.Center
     ) { paddingValues ->
