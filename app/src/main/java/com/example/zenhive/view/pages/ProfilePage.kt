@@ -45,7 +45,10 @@ fun ProfilePage(onNavigateToFeaturedHives: () -> Unit = {}) {
     var interests by remember { mutableStateOf<List<String>>(emptyList()) }
 
     // Fetch user information from Firebase
-    val userId = FirebaseAuth.getInstance().currentUser?.uid
+    // Try to get UID from SharedPreferences first, then fallback to FirebaseAuth
+    val sharedPref = context.getSharedPreferences("user_prefs", android.content.Context.MODE_PRIVATE)
+    val sharedPrefUid = sharedPref.getString("uid", null)
+    val userId = sharedPrefUid ?: FirebaseAuth.getInstance().currentUser?.uid
 
     LaunchedEffect(userId) {
         if (userId != null) {
