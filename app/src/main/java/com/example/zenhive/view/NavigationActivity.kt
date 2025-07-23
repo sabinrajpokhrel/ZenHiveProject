@@ -19,12 +19,17 @@ import androidx.compose.ui.unit.dp
 import com.example.zenhive.R
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.ui.layout.ContentScale
 import com.example.zenhive.view.pages.ProfilePage
 import com.example.zenhive.view.pages.FeaturedHivesPage
 import com.example.zenhive.view.pages.PeoplePage
 import com.example.zenhive.view.pages.NotificationPage
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.example.zenhive.ui.components.LogoButton
+import com.example.zenhive.viewmodel.UserViewModel
+import com.google.firebase.auth.FirebaseAuth
 
 class NavigationActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -167,6 +172,10 @@ fun TopNavBar(
     onNavItemClick: (Int) -> Unit
 ) {
 //    var profileMenuExpanded by remember { mutableStateOf(false) }
+    val userViewModel: UserViewModel = viewModel()
+    val user by userViewModel.user.collectAsState()
+    val userPhotoUrl = user?.photoUrl
+
 
     TopAppBar(
         title = {
@@ -188,13 +197,26 @@ fun TopNavBar(
 
             Box {
                 IconButton(onClick = { onNavItemClick(4) }) {
-                    Image(
-                        painter = painterResource(id = R.drawable.person),
-                        contentDescription = "Profile",
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape) // Make the profile icon circular
-                    )
+                    if (userPhotoUrl != null) {
+                        AsyncImage(
+                            model = userPhotoUrl,
+                            contentDescription = "Profile",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                        )
+                    } else {
+                        Image(
+                            painter = painterResource(id = R.drawable.person),
+                            contentDescription = "Profile",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                        )
+                    }
+
                 }
 
 //                DropdownMenu(
