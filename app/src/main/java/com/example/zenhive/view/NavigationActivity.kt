@@ -169,15 +169,34 @@ fun NavigationBody() {
 @Composable
 fun TopNavBar(
     onSearchClick: () -> Unit,
-
     onNotificationClick: () -> Unit, // not used now, but keep to match your signature
     onNavItemClick: (Int) -> Unit
 ) {
 //    var profileMenuExpanded by remember { mutableStateOf(false) }
     val userViewModel: UserViewModel = viewModel()
     val user by userViewModel.user.collectAsState()
-    val userPhotoUrl = user?.photoUrl
+    val context = LocalContext.current
+    var userPhotoUrl by remember { mutableStateOf<String?>(null) }
 
+    // Fetch UID from SharedPreferences or FirebaseAuth
+    val sharedPref = context.getSharedPreferences("user_prefs", android.content.Context.MODE_PRIVATE)
+    val sharedPrefUid = sharedPref.getString("uid", null)
+    val userId = sharedPrefUid ?: FirebaseAuth.getInstance().currentUser?.uid
+
+    // Fetch photoUrl from Firebase
+    LaunchedEffect(userId) {
+        if (userId != null) {
+            com.google.firebase.database.FirebaseDatabase.getInstance().getReference("users/$userId/photoUrl")
+                .addListenerForSingleValueEvent(object : com.google.firebase.database.ValueEventListener {
+                    override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
+                        userPhotoUrl = snapshot.getValue(String::class.java)
+                    }
+                    override fun onCancelled(error: com.google.firebase.database.DatabaseError) {}
+                })
+        } else {
+            userPhotoUrl = null
+        }
+    }
 
     TopAppBar(
         title = {
@@ -196,10 +215,9 @@ fun TopNavBar(
                     contentDescription = "Notifications"
                 )
             }
-
             Box {
                 IconButton(onClick = { onNavItemClick(4) }) {
-                    if (userPhotoUrl != null) {
+                    if (userPhotoUrl != null && userPhotoUrl!!.isNotEmpty()) {
                         AsyncImage(
                             model = userPhotoUrl,
                             contentDescription = "Profile",
@@ -218,22 +236,7 @@ fun TopNavBar(
                                 .clip(CircleShape)
                         )
                     }
-
                 }
-
-//                DropdownMenu(
-//                    expanded = profileMenuExpanded,
-//                    onDismissRequest = { profileMenuExpanded = false }
-//                ) {
-//                    DropdownMenuItem(
-//                        text = { Text("Account Settings") },
-//                        onClick = { profileMenuExpanded = false }
-//                    )
-//                    DropdownMenuItem(
-//                        text = { Text("Logout") },
-//                        onClick = { profileMenuExpanded = false }
-//                    )
-//                }
             }
         }
     )
