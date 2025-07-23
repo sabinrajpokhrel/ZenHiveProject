@@ -45,8 +45,9 @@ fun ProfilePage(onNavigateToFeaturedHives: () -> Unit = {}) {
     var interests by remember { mutableStateOf<List<String>>(emptyList()) }
 
     // Fetch user information from Firebase
-    LaunchedEffect(Unit) {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid
+    val userId = FirebaseAuth.getInstance().currentUser?.uid
+
+    LaunchedEffect(userId) {
         if (userId != null) {
             FirebaseDatabase.getInstance().getReference("users/$userId")
                 .addListenerForSingleValueEvent(object : ValueEventListener {
@@ -55,17 +56,20 @@ fun ProfilePage(onNavigateToFeaturedHives: () -> Unit = {}) {
                         displayName = snapshot.child("displayName").value as? String ?: ""
                         bio = snapshot.child("bio").value as? String ?: ""
 
-                        // Get interests as a List
                         val interestsList = snapshot.child("interests").children.mapNotNull {
                             it.value as? String
                         }
                         interests = interestsList
                     }
 
-                    override fun onCancelled(error: DatabaseError) {
-                        // Handle error
-                    }
+                    override fun onCancelled(error: DatabaseError) {}
                 })
+        } else {
+            // User logged out: clear profile data
+            photoUrl = null
+            displayName = ""
+            bio = ""
+            interests = emptyList()
         }
     }
 

@@ -29,6 +29,7 @@ import com.example.zenhive.R
 import com.example.zenhive.model.UserModel
 import com.example.zenhive.repository.UserRepository
 import com.example.zenhive.repository.UserRepositoryImplementation
+import com.google.firebase.database.DataSnapshot
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
@@ -226,6 +227,10 @@ fun PreferenceScreenPreview() {
         override suspend fun updateUserBio(uid: String, bio: String) {}
         override suspend fun updateUserInterests(uid: String, interests: List<String>) {}
         override suspend fun firebaseAuthWithGoogle(idToken: String): UserModel? = null
+        override suspend fun getUserSnapshotByUid(uid: String): DataSnapshot? {
+            TODO("Not yet implemented")
+        }
+
         override suspend fun login(
             email: String,
             password: String

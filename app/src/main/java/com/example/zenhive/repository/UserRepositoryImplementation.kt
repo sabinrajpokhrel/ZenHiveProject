@@ -3,10 +3,16 @@ package com.example.zenhive.repository
 import com.example.zenhive.model.UserModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlin.coroutines.suspendCoroutine
 
 class UserRepositoryImplementation(
     private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance()
@@ -85,29 +91,40 @@ class UserRepositoryImplementation(
         }
     }
 
-    override suspend fun login(email: String, password: String): UserModel? {
-        return withContext(Dispatchers.IO) {
-            try {
-                // Query users by email
-                val snapshot = dbRef.orderByChild("email").equalTo(email).get().await()
-                if (snapshot.exists()) {
-                    // Iterate over the matched users (should be one if emails are unique)
-                    for (userSnap in snapshot.children) {
-                        val user = userSnap.getValue(UserModel::class.java)
-                        if (user != null) {
-                            // Check password manually
-                            if (user.password == password) {
-                                return@withContext user
-                            }
-                        }
+    override suspend fun login(email: String, password: String): UserModel? = suspendCoroutine { cont ->
+        val database = FirebaseDatabase.getInstance().getReference("users")
+        database.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                for (userSnapshot in snapshot.children) {
+                    val user = userSnapshot.getValue(UserModel::class.java)
+                    if (user != null && user.email == email && user.password == password) {
+                        cont.resume(user)
+                        return
                     }
                 }
-                null // no user found or password mismatch
-            } catch (e: Exception) {
-                null
+                cont.resume(null) // Not found
             }
+
+
+            override fun onCancelled(error: DatabaseError) {
+                cont.resumeWithException(error.toException())
+            }
+        })
+    }
+
+
+    override suspend fun getUserSnapshotByUid(uid: String): DataSnapshot? {
+        return try {
+            FirebaseDatabase.getInstance()
+                .getReference("users")
+                .child(uid)
+                .get()
+                .await()
+        } catch (e: Exception) {
+            null
         }
     }
+
 
 
 }

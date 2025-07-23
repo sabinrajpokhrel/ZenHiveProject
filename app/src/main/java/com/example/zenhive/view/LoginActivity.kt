@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -38,6 +39,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalView
+import com.example.zenhive.model.UserModel
+import com.example.zenhive.repository.UserRepository
 import com.example.zenhive.repository.UserRepositoryImplementation
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
@@ -60,11 +63,10 @@ class LoginActivity : ComponentActivity() {
         var password by remember { mutableStateOf("") }
         val coroutineScope = rememberCoroutineScope()
         var isLoading by remember { mutableStateOf(false) }
-
+        val userRepository = remember { UserRepositoryImplementation() }
         val context = LocalContext.current
         android.util.Log.d("LoginDebug", "LoginBody composition with context: $context")
 
-        val userRepository = remember { UserRepositoryImplementation() }
 
 
 
@@ -203,25 +205,29 @@ class LoginActivity : ComponentActivity() {
                     ) {
                         Button(
                             onClick = {
-                                android.util.Log.d("LoginDebug", "Login button clicked")
+                                // 🔹 Step 1: Button clicked confirmation
+                                Toast.makeText(context, "Login button clicked", Toast.LENGTH_SHORT).show()
+                                Log.d("LoginDebug", "Login button clicked")
 
-                                if (email.isBlank() || password.isBlank()) {
-                                    android.util.Log.d("LoginDebug", "Email or password is blank")
-                                    Toast.makeText(context, "Please fill in all fields", Toast.LENGTH_SHORT).show()
-                                    return@Button
-                                }
+                                // 🔹 Step 2: Temporarily skip blank check (for debugging)
+                                // if (email.isBlank() || password.isBlank()) {
+                                //     Log.d("LoginDebug", "Email or password is blank")
+                                //     Toast.makeText(context, "Please fill in all fields", Toast.LENGTH_SHORT).show()
+                                //     return@Button
+                                // }
 
                                 isLoading = true
-                                android.util.Log.d("LoginDebug", "Starting login coroutine")
+                                Log.d("LoginDebug", "Starting login coroutine")
 
                                 coroutineScope.launch {
                                     try {
-                                        android.util.Log.d("LoginDebug", "Calling custom repository.login(email, password)")
+                                        Log.d("LoginDebug", "Calling custom repository.login(email, password)")
                                         val user = userRepository.login(email, password)
 
                                         if (user != null) {
-                                            android.util.Log.d("LoginDebug", "User found: $user")
-                                            // Save user in SharedPreferences
+                                            Log.d("LoginDebug", "User found: $user")
+
+                                            // 🔹 Step 3: SharedPreferences save log
                                             val sharedPref = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
                                             with(sharedPref.edit()) {
                                                 putString("uid", user.uid)
@@ -229,24 +235,25 @@ class LoginActivity : ComponentActivity() {
                                                 putString("displayName", user.displayName)
                                                 apply()
                                             }
-                                            android.util.Log.d("LoginDebug", "User info saved in SharedPreferences")
+                                            Log.d("LoginDebug", "User info saved in SharedPreferences")
 
                                             Toast.makeText(context, "Login successful!", Toast.LENGTH_SHORT).show()
                                             context.startActivity(Intent(context, NavigationActivity::class.java))
                                             (context as? Activity)?.finish()
                                         } else {
-                                            android.util.Log.d("LoginDebug", "User not found or password mismatch")
+                                            Log.d("LoginDebug", "User not found or password mismatch")
                                             Toast.makeText(context, "Invalid email or password", Toast.LENGTH_LONG).show()
                                         }
                                     } catch (e: Exception) {
-                                        android.util.Log.e("LoginDebug", "Login error: ${e.message}", e)
+                                        Log.e("LoginDebug", "Login error: ${e.message}", e)
                                         Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
                                     } finally {
-                                        android.util.Log.d("LoginDebug", "Login process finished, setting isLoading=false")
+                                        Log.d("LoginDebug", "Login process finished, setting isLoading=false")
                                         isLoading = false
                                     }
                                 }
                             }
+
                             ,
                             shape = RoundedCornerShape(20.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = colorResource(id = R.color.payalo)),
