@@ -317,3 +317,4 @@ fun ProfilePage(onNavigateToFeaturedHives: () -> Unit = {}) {
         }
     }
 }
+//Profile Page
