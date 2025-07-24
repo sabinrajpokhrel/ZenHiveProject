@@ -239,3 +239,4 @@ fun PreferenceScreenPreview() {
         }
     })
 }
+//interestActivity Code added
