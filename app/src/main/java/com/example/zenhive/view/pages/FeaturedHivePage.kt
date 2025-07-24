@@ -1,5 +1,6 @@
 package com.example.zenhive.view.pages
 
+import android.content.Intent
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -14,11 +15,13 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.platform.LocalContext
 import com.example.zenhive.ui.components.HiveCard
 import com.example.zenhive.viewmodel.HiveViewModel
+import com.example.zenhive.view.pages.PeoplePage
 import com.example.zenhive.R // 👈 Needed for placeholder image
 import com.example.zenhive.ui.components.LogoButton
-import androidx.compose.runtime.*
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 
 
@@ -31,6 +34,8 @@ fun FeaturedHivesPage() {
     val liveHives by hiveViewModel.liveHives.collectAsState()
 
     val photoCache = remember { mutableStateMapOf<String, String?>() }
+    val context = LocalContext.current
+    val currentUser = FirebaseAuth.getInstance().currentUser
 
 
     // heklper function
@@ -115,8 +120,25 @@ fun FeaturedHivesPage() {
                         }
                         HiveCard(
                             title = hive.title,
-                            creatorPhotoUrl = photoCache[hive.hostUid], // Placeholder image // change this later
-                            membersCount = hive.participants.size
+                            creatorPhotoUrl = photoCache[hive.hostUid],
+                            membersCount = hive.participants.size,
+                            onJoinClick = {
+                                if (currentUser != null) {
+                                    val dbRef = FirebaseDatabase.getInstance().getReference("hives").child(hive.hiveId)
+                                    dbRef.child("participants").get().addOnSuccessListener { snapshot ->
+                                        val participants = snapshot.children.mapNotNull { it.getValue(String::class.java) }.toMutableList()
+                                        if (!participants.contains(currentUser.uid)) {
+                                            participants.add(currentUser.uid)
+                                            dbRef.child("participants").setValue(participants)
+                                        }
+                                        val intent = Intent(context, com.example.zenhive.view.HiveGroupCallActivity::class.java)
+                                        intent.putExtra("HIVE_ID", hive.hiveId)
+                                        intent.putExtra("HIVE_TITLE", hive.title)
+                                        intent.putExtra("HIVE_OWNER", hive.hostName)
+                                        context.startActivity(intent)
+                                    }
+                                }
+                            }
                         )
                     }
                 }

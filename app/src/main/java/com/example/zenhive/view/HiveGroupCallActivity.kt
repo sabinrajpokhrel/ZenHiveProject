@@ -1,178 +1,222 @@
 package com.example.zenhive.view
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import com.google.accompanist.flowlayout.FlowRow
-
-import androidx.compose.ui.Modifier
+import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.*
+import coil.compose.rememberAsyncImagePainter
 import com.example.zenhive.R
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.*
+import im.zego.zegoexpress.ZegoExpressEngine
+import im.zego.zegoexpress.callback.IZegoEventHandler
+import im.zego.zegoexpress.constants.ZegoUpdateType
+import im.zego.zegoexpress.entity.ZegoStream
+import im.zego.zegoexpress.entity.ZegoUser
+import java.util.*
 
 class HiveGroupCallActivity : ComponentActivity() {
+
+    private lateinit var hiveTitle: String
+    private lateinit var hiveOwner: String
+    private lateinit var hiveId: String
+    private lateinit var dbRef: DatabaseReference
+    private lateinit var userRef: DatabaseReference
+    private var zegoUserId: String = ""
+    private var zegoUserName: String = ""
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Get hive info from intent
+        hiveTitle = intent.getStringExtra("HIVE_TITLE") ?: "Unknown Hive"
+        hiveOwner = intent.getStringExtra("HIVE_OWNER") ?: "Someone"
+        hiveId = intent.getStringExtra("HIVE_ID") ?: ""
+        dbRef = FirebaseDatabase.getInstance().getReference("hives").child(hiveId)
+        userRef = FirebaseDatabase.getInstance().getReference("users")
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        zegoUserId = currentUser?.uid ?: UUID.randomUUID().toString()
+        zegoUserName = currentUser?.displayName ?: "Unknown"
+
         setContent {
-            HiveGroupCallScreen()
+            val participants = remember { mutableStateListOf<Participant>() }
+            val context = this
+            // Listen for participant changes and handle Zego room join/leave
+            DisposableEffect(hiveId) {
+                val participantListener = object : ValueEventListener {
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        val ids = snapshot.child("participants").children.mapNotNull { it.getValue(String::class.java) }
+                        participants.clear()
+                        ids.forEach { uid ->
+                            userRef.child(uid).get().addOnSuccessListener { userSnap ->
+                                val name = userSnap.child("displayName").getValue(String::class.java) ?: "Unknown"
+                                val imageUrl = userSnap.child("photoUrl").getValue(String::class.java) ?: ""
+                                participants.add(Participant(name, imageUrl, false))
+                            }
+                        }
+                    }
+                    override fun onCancelled(error: DatabaseError) {}
+                }
+                dbRef.addValueEventListener(participantListener)
+                // Zego join room with ZegoUser
+                val zegoUser = ZegoUser(zegoUserId, zegoUserName)
+                ZegoExpressEngine.getEngine().loginRoom(hiveId, zegoUser)
+                onDispose {
+                    dbRef.removeEventListener(participantListener)
+                    ZegoExpressEngine.getEngine().logoutRoom(hiveId)
+                }
+            }
+            HiveGroupCallScreen(
+                hiveTitle = hiveTitle,
+                hiveOwner = hiveOwner,
+                participantList = participants,
+                onLeave = {
+                    // Remove current user from participants and navigate to NavigationActivity
+                    val currentUser = FirebaseAuth.getInstance().currentUser
+                    if (currentUser != null) {
+                        dbRef.child("participants").get().addOnSuccessListener { snapshot ->
+                            val ids = snapshot.children.mapNotNull { it.getValue(String::class.java) }.toMutableList()
+                            ids.remove(currentUser.uid)
+                            dbRef.child("participants").setValue(ids)
+                        }
+                    }
+                    val intent = android.content.Intent(context, NavigationActivity::class.java)
+                    intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    context.startActivity(intent)
+                }
+            )
         }
     }
+
+    data class Participant(val name: String, val imageUrl: String, val isSpeaking: Boolean)
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun HiveGroupCallScreen() {
-    val users = listOf(
-        "John", "Sofie", "Devi", "Max", "Rob", "Steve", "Deeya"
-    )
-    val images = listOf(
-        R.drawable.person1, R.drawable.person2, R.drawable.person3,
-        R.drawable.person4, R.drawable.person5
-    )
-
+fun HiveGroupCallScreen(hiveTitle: String, hiveOwner: String, participantList: List<HiveGroupCallActivity.Participant>, onLeave: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = Color(0xFF1E1E1E) // Dark gray background
+        color = Color(0xFF1E1E1E)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 16.dp)
-        ) {
-            // Header
+        Column(modifier = Modifier.fillMaxSize()) {
+
+            // Top header
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column {
-                    Text(
-                        "NEPSE MARKET",
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
+                    Text(hiveTitle, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Sabin’s Hive", color = Color.LightGray, fontSize = 14.sp)
+                        Text("$hiveOwner's Hive", color = Color.Gray)
                         Spacer(modifier = Modifier.width(8.dp))
                         Icon(
-                            painter = painterResource(id = R.drawable.baseline_supervised_user_circle_24),
+                            painter = painterResource(id = R.drawable.baseline_mic_24),
                             contentDescription = null,
                             tint = Color.LightGray,
                             modifier = Modifier.size(16.dp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("126", color = Color.LightGray, fontSize = 14.sp)
+                        Text(participantList.size.toString(), color = Color.Gray, fontSize = 14.sp)
                     }
                 }
-                Text(
-                    text = "2:38",
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.LightGray
-                )
+                Text("2:38", color = Color.Gray, fontSize = 22.sp)
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Grid of users
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                mainAxisSpacing = 24.dp,
-                crossAxisSpacing = 24.dp
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(4),
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                users.forEachIndexed { index, name ->
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
+                items(participantList) { participant ->
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Box {
                             Image(
-                                painter = painterResource(id = images[index % images.size]),
-                                contentDescription = null,
+                                painter = rememberAsyncImagePainter(participant.imageUrl),
+                                contentDescription = participant.name,
                                 modifier = Modifier
-                                    .size(80.dp)
-                                    .clip(CircleShape),
-                                contentScale = ContentScale.Crop
+                                    .size(64.dp)
+                                    .padding(4.dp)
+                                    .clip(CircleShape)
                             )
-                            Image(
-                                painter = painterResource(id = R.drawable.baseline_mic_off_24),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .align(Alignment.BottomEnd)
-                                    .size(24.dp)
-                            )
+                            if (!participant.isSpeaking) {
+                                Image(
+                                    painter = painterResource(id = R.drawable.baseline_mic_24),
+                                    contentDescription = "Muted",
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .align(Alignment.BottomEnd)
+                                )
+                            }
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(name, color = Color.White, fontSize = 14.sp)
+                        Text(participant.name, color = Color.White, fontSize = 14.sp)
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Bottom Controls
+            // Bottom control buttons
             Row(
-                modifier = Modifier
+                Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 16.dp),
+                    .padding(20.dp),
                 horizontalArrangement = Arrangement.SpaceAround,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Button(
-                    onClick = { /* Leave logic */ },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD84343)),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier
-                        .height(50.dp)
-                        .weight(1f)
+                    onClick = onLeave,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.height(48.dp)
                 ) {
-                    Text("Leave", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text("Leave", fontWeight = FontWeight.Bold)
                 }
-                Spacer(modifier = Modifier.width(16.dp))
-                IconButton(onClick = { /* Mute */ }) {
+
+                IconButton(onClick = { /* toggle mic */ }) {
                     Icon(
-                        painter = painterResource(id = R.drawable.baseline_mic_off_24),
-                        contentDescription = "Mute",
+                        painter = painterResource(id = R.drawable.baseline_mic_24),
+                        contentDescription = "Mic",
                         tint = Color.White,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(28.dp)
                     )
                 }
-                IconButton(onClick = { /* Add user */ }) {
+
+                IconButton(onClick = { /* invite people */ }) {
                     Icon(
-                        painter = painterResource(id = R.drawable.outline_add_2_24),
-                        contentDescription = "Add User",
+                        painter = painterResource(id = R.drawable.ic_invite), // You need to add this icon
+                        contentDescription = "Invite",
                         tint = Color.White,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(28.dp)
                     )
                 }
-                IconButton(onClick = { /* More */ }) {
+
+                IconButton(onClick = { /* more options */ }) {
                     Icon(
-                        painter = painterResource(id = R.drawable.baseline_more_horiz_24),
-                        contentDescription = "More Options",
-                        tint = Color.Gray,
+                        painter = painterResource(id = R.drawable.ic_more), // You need to add this icon
+                        contentDescription = "More",
+                        tint = Color.White,
                         modifier = Modifier.size(28.dp)
                     )
                 }
             }
         }
     }
-}
-
-@Composable
-@Preview
-fun HiveGroupCallPreview() {
-    HiveGroupCallScreen()
 }

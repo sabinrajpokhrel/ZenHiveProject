@@ -34,8 +34,8 @@ fun HiveCard(
     title: String,
     creatorPhotoUrl: String?,
     membersCount: Int,
-)
-{
+    onJoinClick: () -> Unit
+) {
 
 
     Card(
@@ -49,7 +49,10 @@ fun HiveCard(
             Spacer(modifier = Modifier.height(6.dp))
             Text(title, color = Color.Black, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(12.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 if (!creatorPhotoUrl.isNullOrEmpty()) {
                     AsyncImage(
                         model = creatorPhotoUrl,
@@ -75,7 +78,7 @@ fun HiveCard(
                 Spacer(modifier = Modifier.width(8.dp))
                 Spacer(modifier = Modifier.weight(1f))
                 Button(
-                    onClick = { /* handle join */ },
+                    onClick = onJoinClick,
                     shape = RoundedCornerShape(50),
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
