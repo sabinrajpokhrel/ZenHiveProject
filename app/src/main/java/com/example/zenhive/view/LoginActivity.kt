@@ -310,3 +310,5 @@ class LoginActivity : ComponentActivity() {
         LoginBody(innerPadding = PaddingValues(0.dp))
     }
 }
+
+//Testing codes added
