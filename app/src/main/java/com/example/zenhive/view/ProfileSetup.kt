@@ -462,3 +462,4 @@ class ProfileSetup : ComponentActivity() {
         }
     }
 }
+//profile setup code added
