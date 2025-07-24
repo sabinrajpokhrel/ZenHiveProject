@@ -31,3 +31,4 @@ fun NotificationPage(onNavigateToFeaturedHives: () -> Unit = {}) {
         }
     }
 }
+//Notification Page
