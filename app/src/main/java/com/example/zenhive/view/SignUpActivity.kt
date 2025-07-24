@@ -260,3 +260,4 @@ class SignUpActivity : ComponentActivity() {
         coroutineScope.cancel()
     }
 }
+// SignUp Activity added
