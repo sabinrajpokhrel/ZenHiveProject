@@ -225,6 +225,7 @@ class LoginActivity : ComponentActivity() {
                                             sharedPref.edit()
                                                 .putString("CURRENT_USER_EMAIL", email)
                                                 .putString("CURRENT_USER_PASSWORD", password)
+                                                .putString("CURRENT_USER_UID", user.uid)
                                                 .apply()
                                             // No need to save to SharedPreferences since Firebase Auth handles the session
                                             context.startActivity(Intent(context, NavigationActivity::class.java))
