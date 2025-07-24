@@ -74,7 +74,7 @@ fun SplashScreen(onTimeout: () -> Unit) {
 }
 
 
-
+//Testing code added
 
 @Preview(showBackground = true)
 @Composable
