@@ -462,3 +462,4 @@ class ProfileSetup : ComponentActivity() {
         }
     }
 }
+//Testing with JUnit
