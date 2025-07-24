@@ -28,6 +28,7 @@ import com.example.zenhive.view.HiveActivity
 import kotlinx.coroutines.delay
 
 @Composable
+//This is the Logo Button that is a floating button in all activities
 fun LogoButton(
     onExploreClick: () -> Unit
 ) {

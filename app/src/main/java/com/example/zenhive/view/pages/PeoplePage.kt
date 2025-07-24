@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.sp
 import com.example.zenhive.R
 import com.example.zenhive.ui.components.PeopleSuggestionCard
 
-
+//Coming Soon
 @Composable
 fun PeoplePage() {
     Column(
@@ -91,3 +91,4 @@ fun PeoplePage() {
     }
 }
 
+//These are Dummy Posts
