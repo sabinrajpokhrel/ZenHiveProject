@@ -1,5 +1,6 @@
 package com.example.zenhive.view
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
@@ -23,9 +24,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.zenhive.R
 import com.example.zenhive.model.HiveModel
+import com.example.zenhive.repository.UserRepositoryImplementation
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import java.util.UUID
+import kotlinx.coroutines.launch
 
 class HiveActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -41,6 +44,20 @@ fun HiveScreen() {
     var hiveId by remember { mutableStateOf("") }
     var hiveTitle by remember { mutableStateOf("") }
     val context = LocalContext.current
+    var currentUser by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser) }
+    var isLoading by remember { mutableStateOf(false) }
+    val userRepository = remember { UserRepositoryImplementation() }
+    val coroutineScope = rememberCoroutineScope()
+
+    // Observe FirebaseAuth state
+    DisposableEffect(Unit) {
+        val auth = FirebaseAuth.getInstance()
+        val listener = FirebaseAuth.AuthStateListener { authInstance ->
+            currentUser = authInstance.currentUser
+        }
+        auth.addAuthStateListener(listener)
+        onDispose { auth.removeAuthStateListener(listener) }
+    }
 
     Column(
         modifier = Modifier
@@ -115,7 +132,34 @@ fun HiveScreen() {
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = { /* TODO: Join logic */ },
+            onClick = {
+                if (hiveId.isNotBlank() && currentUser != null) {
+                    val safeUser = currentUser
+                    val dbRef = FirebaseDatabase.getInstance().getReference("hives").child(hiveId)
+                    dbRef.get().addOnSuccessListener { snapshot ->
+                        if (snapshot.exists()) {
+                            val participants = snapshot.child("participants").children.mapNotNull { it.getValue(String::class.java) }.toMutableList()
+                            if (safeUser != null && !participants.contains(safeUser.uid)) {
+                                participants.add(safeUser.uid)
+                                dbRef.child("participants").setValue(participants)
+                            }
+                            val hiveTitle = snapshot.child("title").getValue(String::class.java) ?: "Unknown Hive"
+                            val hiveOwner = snapshot.child("hostName").getValue(String::class.java) ?: "Someone"
+                            val intent = Intent(context, HiveGroupCallActivity::class.java)
+                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            intent.putExtra("HIVE_ID", hiveId)
+                            intent.putExtra("HIVE_TITLE", hiveTitle)
+                            intent.putExtra("HIVE_OWNER", hiveOwner)
+                            context.startActivity(intent)
+                        } else {
+                            Toast.makeText(context, "Hive not found", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                } else {
+                    Toast.makeText(context, "Enter a Hive ID first", Toast.LENGTH_SHORT).show()
+                }
+            },
+            enabled = !isLoading,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
@@ -191,37 +235,65 @@ fun HiveScreen() {
 
         Button(
             onClick = {
-
-                val currentUser = FirebaseAuth.getInstance().currentUser
-                if (currentUser != null && hiveTitle.isNotBlank()) {
-                    val hiveId = UUID.randomUUID().toString()
-                    val hive = HiveModel(
-                        hiveId = hiveId,
-                        title = hiveTitle.trim(),
-                        hostUid = currentUser.uid,
-                        hostName = currentUser.displayName ?: "Unknown",
-                        timestamp = System.currentTimeMillis(),
-                        live = true,
-                        participants = listOf(currentUser.uid)
-                    )
-
-                    val dbRef = FirebaseDatabase.getInstance().reference
-                    dbRef.child("hives").child(hiveId).setValue(hive).addOnCompleteListener { task ->
-                        if (task.isSuccessful) {
-                            // Navigate to NavigationActivity
-                            val intent = Intent(context, NavigationActivity::class.java)
-                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                            context.startActivity(intent)
+                Toast.makeText(context, "Button clicked", Toast.LENGTH_SHORT).show()
+                val title = hiveTitle.trim()
+                if (title.isEmpty()) {
+                    Toast.makeText(context, "Enter a title first", Toast.LENGTH_SHORT).show()
+                } else {
+                    isLoading = true
+                    // Get email and password from SharedPreferences (or another secure store)
+                    val sharedPref = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+                    val email = sharedPref.getString("CURRENT_USER_EMAIL", null)
+                    val password = sharedPref.getString("CURRENT_USER_PASSWORD", null)
+                    if (email.isNullOrEmpty() || password.isNullOrEmpty()) {
+                        isLoading = false
+                        Toast.makeText(context, "User credentials not found. Please login again.", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+                    coroutineScope.launch {
+                        val user = userRepository.login(email, password)
+                        if (user != null) {
+                            val uid = user.uid
+                            val dbDisplayName = user.displayName ?: "Unknown"
+                            val hiveId = UUID.randomUUID().toString()
+                            val hive = HiveModel(
+                                hiveId = hiveId,
+                                title = title,
+                                hostUid = uid,
+                                hostName = dbDisplayName,
+                                timestamp = System.currentTimeMillis(),
+                                live = true,
+                                participants = listOf(uid)
+                            )
+                            val dbRef = FirebaseDatabase.getInstance().reference
+                            dbRef.child("hives").child(hiveId).setValue(hive)
+                                .addOnCompleteListener { task ->
+                                    isLoading = false
+                                    if (task.isSuccessful) {
+                                        val intent = Intent(context, HiveGroupCallActivity::class.java)
+                                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                        intent.putExtra("HIVE_ID", hiveId)
+                                        intent.putExtra("HIVE_TITLE", title)
+                                        intent.putExtra("HIVE_OWNER", dbDisplayName)
+                                        context.startActivity(intent)
+                                    } else {
+                                        Toast.makeText(context, "Failed to create hive", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                                .addOnFailureListener { e ->
+                                    isLoading = false
+                                    Toast.makeText(context, "Error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                                    e.printStackTrace()
+                                }
                         } else {
-                            Toast.makeText(context, "Failed to create hive", Toast.LENGTH_SHORT).show()
+                            isLoading = false
+                            Toast.makeText(context, "User not found. Please login again.", Toast.LENGTH_SHORT).show()
                         }
                     }
-                } else {
-                    Toast.makeText(context, "Enter a title first", Toast.LENGTH_SHORT).show()
                 }
             },
-
-                    modifier = Modifier
+            enabled = true,
+            modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
             shape = RoundedCornerShape(12.dp),
@@ -230,11 +302,15 @@ fun HiveScreen() {
                 contentColor = Color.Black
             )
         ) {
-            Text(
-                text = "Create Hive",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
+            if (isLoading) {
+                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp))
+            } else {
+                Text(
+                    text = "Create Hive",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }

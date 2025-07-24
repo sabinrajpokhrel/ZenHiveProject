@@ -8,7 +8,7 @@ class ZenHiveApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-
+        android.util.Log.d("ZenHiveApplication", "ZenHiveApplication onCreate called")
         val appID: Long = 815743631 // Your App ID
         val appSign: String = "63508d7f3df0ff0febf37aa449f1ce4de69686ede8386e5de944c2d84e0e6d04" // Your App Sign
         val isTestEnv = true // Use true for testing, false for production
@@ -23,5 +23,6 @@ class ZenHiveApplication : Application() {
             this,
             object : IZegoEventHandler() {}
         )
+        android.util.Log.d("ZenHiveApplication", "ZegoExpressEngine.createEngine called")
     }
 }
