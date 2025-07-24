@@ -253,3 +253,4 @@ fun TopNavBar(
 fun PreviewNavigationBody() {
     NavigationBody()
 }
+//navigationActivity code added

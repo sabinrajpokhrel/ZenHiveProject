@@ -39,7 +39,7 @@ class SplashActivity : ComponentActivity() {
         }
     }
 }
-
+// SplashActivity Code added
 
 @Composable
 fun SplashScreen(onTimeout: () -> Unit) {
