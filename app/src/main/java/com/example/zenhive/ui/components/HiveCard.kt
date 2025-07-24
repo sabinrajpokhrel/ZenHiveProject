@@ -77,6 +77,7 @@ fun HiveCard(
                 Text("👥 $membersCount", fontSize = 12.sp)
                 Spacer(modifier = Modifier.width(8.dp))
                 Spacer(modifier = Modifier.weight(1f))
+//                This is the Join button
                 Button(
                     onClick = onJoinClick,
                     shape = RoundedCornerShape(50),
