@@ -123,12 +123,15 @@ fun FeaturedHivesPage() {
                             creatorPhotoUrl = photoCache[hive.hostUid],
                             membersCount = hive.participants.size,
                             onJoinClick = {
-                                if (currentUser != null) {
+                                // Use UID from SharedPreferences instead of FirebaseAuth
+                                val sharedPref = context.getSharedPreferences("user_prefs", android.content.Context.MODE_PRIVATE)
+                                val uid = sharedPref.getString("CURRENT_USER_UID", null)
+                                if (uid != null) {
                                     val dbRef = FirebaseDatabase.getInstance().getReference("hives").child(hive.hiveId)
                                     dbRef.child("participants").get().addOnSuccessListener { snapshot ->
                                         val participants = snapshot.children.mapNotNull { it.getValue(String::class.java) }.toMutableList()
-                                        if (!participants.contains(currentUser.uid)) {
-                                            participants.add(currentUser.uid)
+                                        if (!participants.contains(uid)) {
+                                            participants.add(uid)
                                             dbRef.child("participants").setValue(participants)
                                         }
                                         val intent = Intent(context, com.example.zenhive.view.HiveGroupCallActivity::class.java)
@@ -137,6 +140,9 @@ fun FeaturedHivesPage() {
                                         intent.putExtra("HIVE_OWNER", hive.hostName)
                                         context.startActivity(intent)
                                     }
+                                } else {
+                                    // Optionally show a toast or redirect to login
+                                    android.widget.Toast.makeText(context, "User not logged in. Please login.", android.widget.Toast.LENGTH_SHORT).show()
                                 }
                             }
                         )
