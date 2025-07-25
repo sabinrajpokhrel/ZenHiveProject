@@ -1,6 +1,7 @@
 package com.example.zenhive.view
 
 import android.os.Bundle
+import org.json.JSONObject
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -37,11 +38,11 @@ class HiveGroupCallActivity : ComponentActivity() {
     private lateinit var userRef: DatabaseReference
     private var zegoUserId: String = ""
     private var zegoUserName: String = ""
+    private var streamID: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Get hive info from intent
         hiveTitle = intent.getStringExtra("HIVE_TITLE") ?: "Unknown Hive"
         hiveOwner = intent.getStringExtra("HIVE_OWNER") ?: "Someone"
         hiveId = intent.getStringExtra("HIVE_ID") ?: ""
@@ -50,10 +51,13 @@ class HiveGroupCallActivity : ComponentActivity() {
         val currentUser = FirebaseAuth.getInstance().currentUser
         zegoUserId = currentUser?.uid ?: UUID.randomUUID().toString()
         zegoUserName = currentUser?.displayName ?: "Unknown"
+        streamID = "stream_$zegoUserId"
 
         setContent {
             val participants = remember { mutableStateListOf<Participant>() }
+            var isMicMuted by remember { mutableStateOf(false) }
             val context = this
+
             // Listen for participant changes and handle Zego room join/leave
             DisposableEffect(hiveId) {
                 val participantListener = object : ValueEventListener {
@@ -71,20 +75,50 @@ class HiveGroupCallActivity : ComponentActivity() {
                     override fun onCancelled(error: DatabaseError) {}
                 }
                 dbRef.addValueEventListener(participantListener)
-                // Zego join room with ZegoUser
+
+                // Zego join room and start publishing audio
                 val zegoUser = ZegoUser(zegoUserId, zegoUserName)
-                ZegoExpressEngine.getEngine().loginRoom(hiveId, zegoUser)
+                val engine = ZegoExpressEngine.getEngine()
+                engine.loginRoom(hiveId, zegoUser)
+                engine.startPublishingStream(streamID)
+
+                // Listen for other users' streams and play them
+                engine.setEventHandler(object : IZegoEventHandler() {
+                    override fun onRoomStreamUpdate(
+                        roomID: String,
+                        updateType: ZegoUpdateType,
+                        streamList: ArrayList<ZegoStream>,
+                        extendedData: JSONObject
+                    ) {
+                        if (updateType == ZegoUpdateType.ADD) {
+                            streamList.forEach { stream ->
+                                engine.startPlayingStream(stream.streamID)
+                            }
+                        } else if (updateType == ZegoUpdateType.DELETE) {
+                            streamList.forEach { stream ->
+                                engine.stopPlayingStream(stream.streamID)
+                            }
+                        }
+                    }
+                })
+
                 onDispose {
                     dbRef.removeEventListener(participantListener)
-                    ZegoExpressEngine.getEngine().logoutRoom(hiveId)
+                    engine.stopPublishingStream()
+                    engine.logoutRoom(hiveId)
                 }
             }
+
             HiveGroupCallScreen(
                 hiveTitle = hiveTitle,
                 hiveOwner = hiveOwner,
                 participantList = participants,
+                isMicMuted = isMicMuted,
+                onMicToggle = {
+                    isMicMuted = !isMicMuted
+                    ZegoExpressEngine.getEngine().muteMicrophone(isMicMuted)
+                },
                 onLeave = {
-                    // Remove current user from participants and navigate to NavigationActivity
                     val currentUser = FirebaseAuth.getInstance().currentUser
                     if (currentUser != null) {
                         dbRef.child("participants").get().addOnSuccessListener { snapshot ->
@@ -105,14 +139,19 @@ class HiveGroupCallActivity : ComponentActivity() {
 }
 
 @Composable
-fun HiveGroupCallScreen(hiveTitle: String, hiveOwner: String, participantList: List<HiveGroupCallActivity.Participant>, onLeave: () -> Unit) {
+fun HiveGroupCallScreen(
+    hiveTitle: String,
+    hiveOwner: String,
+    participantList: List<HiveGroupCallActivity.Participant>,
+    isMicMuted: Boolean,
+    onMicToggle: () -> Unit,
+    onLeave: () -> Unit
+) {
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = Color(0xFF1E1E1E)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-
-            // Top header
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -138,7 +177,6 @@ fun HiveGroupCallScreen(hiveTitle: String, hiveOwner: String, participantList: L
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Grid of users
             LazyVerticalGrid(
                 columns = GridCells.Fixed(4),
                 modifier = Modifier
@@ -173,7 +211,6 @@ fun HiveGroupCallScreen(hiveTitle: String, hiveOwner: String, participantList: L
                 }
             }
 
-            // Bottom control buttons
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -190,18 +227,18 @@ fun HiveGroupCallScreen(hiveTitle: String, hiveOwner: String, participantList: L
                     Text("Leave", fontWeight = FontWeight.Bold)
                 }
 
-                IconButton(onClick = { /* toggle mic */ }) {
+                IconButton(onClick = onMicToggle) {
                     Icon(
                         painter = painterResource(id = R.drawable.baseline_mic_24),
                         contentDescription = "Mic",
-                        tint = Color.White,
+                        tint = if (isMicMuted) Color.Gray else Color.White,
                         modifier = Modifier.size(28.dp)
                     )
                 }
 
                 IconButton(onClick = { /* invite people */ }) {
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_invite), // You need to add this icon
+                        painter = painterResource(id = R.drawable.ic_invite),
                         contentDescription = "Invite",
                         tint = Color.White,
                         modifier = Modifier.size(28.dp)
@@ -210,7 +247,7 @@ fun HiveGroupCallScreen(hiveTitle: String, hiveOwner: String, participantList: L
 
                 IconButton(onClick = { /* more options */ }) {
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_more), // You need to add this icon
+                        painter = painterResource(id = R.drawable.ic_more),
                         contentDescription = "More",
                         tint = Color.White,
                         modifier = Modifier.size(28.dp)
@@ -220,5 +257,3 @@ fun HiveGroupCallScreen(hiveTitle: String, hiveOwner: String, participantList: L
         }
     }
 }
-
-//Testing done in Hive
