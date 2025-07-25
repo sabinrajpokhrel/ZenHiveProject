@@ -186,7 +186,11 @@ class HiveGroupCallActivity : ComponentActivity() {
                                                 notificationRepo.sendNotification(notification)
                                                 showInviteDialog = false
                                             }
-                                        }) {
+
+                                        },
+                                                colors = ButtonDefaults.buttonColors(
+                                                containerColor = Color(0xFFfcbe22)
+                                                )) {
                                             Text("Invite")
                                         }
                                     }
