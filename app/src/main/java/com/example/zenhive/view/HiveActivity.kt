@@ -235,7 +235,7 @@ fun HiveScreen() {
 
         Button(
             onClick = {
-                Toast.makeText(context, "Button clicked", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Hive Created", Toast.LENGTH_SHORT).show()
                 val title = hiveTitle.trim()
                 if (title.isEmpty()) {
                     Toast.makeText(context, "Enter a title first", Toast.LENGTH_SHORT).show()

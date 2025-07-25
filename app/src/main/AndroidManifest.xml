@@ -18,9 +18,9 @@
     <application
         android:name=".ZenHiveApplication"
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/ic_launcher"
         android:label="ZenHive"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@drawable/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.ZenHive"
         tools:targetApi="31">
@@ -29,22 +29,14 @@
             android:exported="true"
             android:label="@string/title_activity_hive_group_call"
             android:theme="@style/Theme.ZenHive">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
 
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
         </activity>
         <activity
             android:name=".view.HiveActivity"
             android:exported="true"
             android:label="@string/title_activity_hive"
             android:theme="@style/Theme.ZenHive">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
 
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
         </activity>
 
         <provider
@@ -57,11 +49,7 @@
             android:exported="true"
             android:label="@string/title_activity_register"
             android:theme="@style/Theme.ZenHive">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
 
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
         </activity>
         <activity
             android:name=".view.OtpConfirmActivity"
@@ -76,8 +64,16 @@
         <activity
             android:name=".view.SplashActivity"
             android:exported="true"
-            android:label="@string/title_activity_splash"
-            android:theme="@style/Theme.ZenHive" />
+            android:theme="@style/Theme.ZenHive">
+
+            <!-- This makes it the launcher activity -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+        </activity>
+
         <activity
             android:name=".view.NavigationActivity"
             android:exported="true"
