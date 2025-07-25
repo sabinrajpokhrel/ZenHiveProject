@@ -20,6 +20,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
 import coil.compose.rememberAsyncImagePainter
 import com.example.zenhive.R
+import com.example.zenhive.model.NotificationModel
+import com.example.zenhive.repository.NotificationRepositoryImplementation
+import com.example.zenhive.model.UserModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import im.zego.zegoexpress.ZegoExpressEngine
@@ -27,6 +30,8 @@ import im.zego.zegoexpress.callback.IZegoEventHandler
 import im.zego.zegoexpress.constants.ZegoUpdateType
 import im.zego.zegoexpress.entity.ZegoStream
 import im.zego.zegoexpress.entity.ZegoUser
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import java.util.*
 
 class HiveGroupCallActivity : ComponentActivity() {
@@ -57,6 +62,11 @@ class HiveGroupCallActivity : ComponentActivity() {
             val participants = remember { mutableStateListOf<Participant>() }
             var isMicMuted by remember { mutableStateOf(false) }
             val context = this
+            val coroutineScope = rememberCoroutineScope()
+            var showInviteDialog by remember { mutableStateOf(false) }
+            var allUsers by remember { mutableStateOf(listOf<UserModel>()) }
+            val currentUserUid = zegoUserId
+            val notificationRepo = remember { NotificationRepositoryImplementation() }
 
             // Listen for participant changes and handle Zego room join/leave
             DisposableEffect(hiveId) {
@@ -130,8 +140,78 @@ class HiveGroupCallActivity : ComponentActivity() {
                     val intent = android.content.Intent(context, NavigationActivity::class.java)
                     intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
                     context.startActivity(intent)
-                }
+                },
+                onInvite = { showInviteDialog = true }
             )
+
+            // Invite Dialog
+            if (showInviteDialog) {
+                AlertDialog(
+                    onDismissRequest = { showInviteDialog = false },
+                    title = { Text("Invite People") },
+                    text = {
+                        Column {
+                            if (allUsers.isEmpty()) {
+                                Text("No users to invite.")
+                            } else {
+                                allUsers.forEach { user ->
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                                    ) {
+                                        Text(user.displayName ?: user.email ?: "Unknown", modifier = Modifier.weight(1f), color = Color.Black)
+                                        Button(onClick = {
+                                            coroutineScope.launch {
+                                                // Try to get displayName from SharedPreferences first (set at login), fallback to DB if needed
+                                                val sharedPref = context.getSharedPreferences("user_prefs", android.content.Context.MODE_PRIVATE)
+                                                val prefDisplayName = sharedPref.getString("CURRENT_USER_DISPLAY_NAME", null)
+                                                val inviterName = if (!prefDisplayName.isNullOrBlank()) {
+                                                    prefDisplayName
+                                                } else {
+                                                    val inviterSnap = userRef.child(currentUserUid).get().await()
+                                                    inviterSnap.child("displayName").getValue(String::class.java)
+                                                        ?.takeIf { !it.isNullOrBlank() } ?: inviterSnap.child("email").getValue(String::class.java) ?: "Unknown"
+                                                }
+                                                val notification = NotificationModel(
+                                                    toUid = user.uid,
+                                                    fromUid = currentUserUid,
+                                                    fromDisplayName = inviterName,
+                                                    hiveId = hiveId,
+                                                    hiveTitle = hiveTitle,
+                                                    type = "invite",
+                                                    message = "$inviterName invited you to join a hive."
+                                                )
+                                                notificationRepo.sendNotification(notification)
+                                                showInviteDialog = false
+                                            }
+                                        }) {
+                                            Text("Invite")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showInviteDialog = false }) {
+                            Text("Close")
+                        }
+                    }
+                )
+            }
+
+            // Fetch all users except current
+            LaunchedEffect(showInviteDialog) {
+                if (showInviteDialog) {
+                    userRef.get().addOnSuccessListener { snapshot ->
+                        val users = snapshot.children.mapNotNull { it.getValue(UserModel::class.java) }
+                        android.widget.Toast.makeText(context, "Fetched users: ${users.size}", android.widget.Toast.LENGTH_SHORT).show()
+                        allUsers = users.filter { it.uid != currentUserUid }
+                    }.addOnFailureListener {
+                        android.widget.Toast.makeText(context, "Failed to fetch users", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
         }
     }
 
@@ -145,7 +225,8 @@ fun HiveGroupCallScreen(
     participantList: List<HiveGroupCallActivity.Participant>,
     isMicMuted: Boolean,
     onMicToggle: () -> Unit,
-    onLeave: () -> Unit
+    onLeave: () -> Unit,
+    onInvite: () -> Unit
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -236,7 +317,7 @@ fun HiveGroupCallScreen(
                     )
                 }
 
-                IconButton(onClick = { /* invite people */ }) {
+                IconButton(onClick = onInvite) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_invite),
                         contentDescription = "Invite",
