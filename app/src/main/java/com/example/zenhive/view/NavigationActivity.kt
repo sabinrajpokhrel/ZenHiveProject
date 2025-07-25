@@ -180,7 +180,7 @@ fun TopNavBar(
 
     // Fetch UID from SharedPreferences or FirebaseAuth
     val sharedPref = context.getSharedPreferences("user_prefs", android.content.Context.MODE_PRIVATE)
-    val sharedPrefUid = sharedPref.getString("uid", null)
+    val sharedPrefUid = sharedPref.getString("CURRENT_USER_UID", null)
     val userId = sharedPrefUid ?: FirebaseAuth.getInstance().currentUser?.uid
 
     // Fetch photoUrl from Firebase
