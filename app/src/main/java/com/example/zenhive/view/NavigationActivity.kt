@@ -105,9 +105,13 @@ fun NavigationBody() {
                             searchResults = null
                         }
                     },
-                    modifier = Modifier.padding(start = 8.dp)
+                    modifier = Modifier.padding(start = 8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFfcbe22),
+                        contentColor = Color.Black
+                    )
                 ) {
-                    Text("Search")
+                    Text("Search", color = Color.Black)
                 }
                 if (searchResults != null) {
                     if (searchResults!!.isEmpty()) {

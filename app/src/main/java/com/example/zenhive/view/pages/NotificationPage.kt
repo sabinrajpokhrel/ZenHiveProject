@@ -86,9 +86,14 @@ fun NotificationPage(onNavigateToFeaturedHives: () -> Unit = {}) {
                                 } else {
                                     Toast.makeText(context, "User not logged in", Toast.LENGTH_SHORT).show()
                                 }
-                            }) {
-                                Text("Join")
-                            }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFfcbe22),
+                                contentColor = Color.Black
+                            )
+                        ) {
+                            Text("Join", color = Color.Black)
+                        }
                         }
                     }
                 }
