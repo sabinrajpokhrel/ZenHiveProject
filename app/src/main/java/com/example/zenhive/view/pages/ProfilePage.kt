@@ -164,8 +164,11 @@ fun ProfilePage(onNavigateToFeaturedHives: () -> Unit = {}) {
             }
 
             item {
+                // Hive count row
+                val userCreatedHives = createdHives.filter { it.hostUid == userId }
+                val userHiveCount = userCreatedHives.size
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("2 ", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("$userHiveCount ", color = Color.White, fontWeight = FontWeight.Bold)
                     Text("hives", color = Color.Gray)
                     Spacer(modifier = Modifier.width(10.dp))
                     Text("30 ", color = Color.White, fontWeight = FontWeight.Bold)
@@ -254,6 +257,8 @@ fun ProfilePage(onNavigateToFeaturedHives: () -> Unit = {}) {
             item {
                 // Show only hives where the user is the host
                 val userCreatedHives = createdHives.filter { it.hostUid == userId }
+                // Hive count for display
+                val userHiveCount = userCreatedHives.size
                 if (userCreatedHives.isEmpty()) {
                     Text("No hives created yet.", color = Color.Gray)
                 } else {
