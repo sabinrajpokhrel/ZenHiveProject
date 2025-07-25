@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -25,11 +26,14 @@ import com.example.zenhive.view.pages.FeaturedHivesPage
 import com.example.zenhive.view.pages.PeoplePage
 import com.example.zenhive.view.pages.NotificationPage
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.zenhive.ui.components.LogoButton
 import com.example.zenhive.viewmodel.UserViewModel
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
+import com.example.zenhive.model.UserModel
 
 class NavigationActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,6 +59,7 @@ fun NavigationBody() {
     var activePage by remember { mutableStateOf("hives") }
     var showSearchBar by remember { mutableStateOf(false) }
     var searchText by remember { mutableStateOf("") }
+    var searchResults by remember { mutableStateOf<List<UserModel>?>(null) }
 
     Scaffold(
         containerColor = colorResource(id = R.color.loginbgg),
@@ -82,13 +87,71 @@ fun NavigationBody() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 12.dp),
-//                    colors = TextFieldDefaults.outlinedTextFieldColors(
-//                        containerColor = Color.White,
-//                        textColor = Color.Black,
-//                        placeholderColor = Color.Gray
-//                    )
-
                 )
+                Button(
+                    onClick = {
+                        if (searchText.isNotBlank()) {
+                            val usersRef = FirebaseDatabase.getInstance().getReference("users")
+                            usersRef.get().addOnSuccessListener { snapshot ->
+                                val allUsers = snapshot.children.mapNotNull { it.getValue(UserModel::class.java) }
+                                val filtered = allUsers.filter {
+                                    it.displayName?.contains(searchText, ignoreCase = true) == true
+                                }
+                                searchResults = filtered
+                            }.addOnFailureListener {
+                                searchResults = emptyList()
+                            }
+                        } else {
+                            searchResults = null
+                        }
+                    },
+                    modifier = Modifier.padding(start = 8.dp)
+                ) {
+                    Text("Search")
+                }
+                if (searchResults != null) {
+                    if (searchResults!!.isEmpty()) {
+                        Text("No users found!", color = Color.White, modifier = Modifier.padding(top = 8.dp))
+                    } else {
+                        Column(modifier = Modifier.padding(top = 8.dp)) {
+                            searchResults!!.forEach { user ->
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    colors = CardDefaults.cardColors(containerColor = Color(0xFF232323))
+                                ) {
+                                    Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        if (!user.photoUrl.isNullOrBlank()) {
+                                            AsyncImage(
+                                                model = user.photoUrl,
+                                                contentDescription = "Profile Photo",
+                                                modifier = Modifier
+                                                    .size(48.dp)
+                                                    .clip(CircleShape)
+                                            )
+                                        } else {
+                                            Icon(
+                                                painter = painterResource(id = R.drawable.person),
+                                                contentDescription = null,
+                                                modifier = Modifier
+                                                    .size(48.dp)
+                                                    .clip(CircleShape),
+                                                tint = Color.Gray
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(16.dp))
+                                        Column {
+                                            Text(user.displayName ?: "No Name", color = Color.White, fontWeight = FontWeight.Bold)
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(user.bio.ifBlank { "No bio available." }, color = Color.Gray)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
 //            Row(
@@ -255,4 +318,3 @@ fun PreviewNavigationBody() {
 }
 
 //Testing with JUnit function
-
