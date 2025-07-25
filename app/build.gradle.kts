@@ -63,6 +63,7 @@ dependencies {
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation(files("libs/ZegoExpressEngine.aar"))
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+    implementation("org.json:json:20240303")
 
 
     // Updated Cloudinary with exclusions
