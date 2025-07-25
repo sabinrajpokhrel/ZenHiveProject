@@ -26,10 +26,12 @@ import com.example.zenhive.viewmodel.HiveViewModel
 import com.example.zenhive.R
 import com.example.zenhive.ui.components.LogoButton
 import com.example.zenhive.view.LoginActivity
+import com.example.zenhive.ui.components.HiveCard
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.ValueEventListener
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,6 +45,7 @@ fun ProfilePage(onNavigateToFeaturedHives: () -> Unit = {}) {
     var displayName by remember { mutableStateOf("") }
     var bio by remember { mutableStateOf("") }
     var interests by remember { mutableStateOf<List<String>>(emptyList()) }
+    val photoCache = remember { mutableStateMapOf<String, String?>() }
 
     // Fetch user information from Firebase
     // Try to get UID from SharedPreferences first, then fallback to FirebaseAuth
@@ -245,66 +248,61 @@ fun ProfilePage(onNavigateToFeaturedHives: () -> Unit = {}) {
                     fontSize = 18.sp
                 )
             }
-
             item {
                 Spacer(modifier = Modifier.height(10.dp))
-
             }
             item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    createdHives.take(3).forEach { hive ->
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(Color(0xFFF8F2E4), RoundedCornerShape(30.dp))
-                                .padding(16.dp)
-                        ) {
-                            Text("UI/UX", color = Color.Gray, fontWeight = FontWeight.SemiBold)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(hive.title, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text("Author Placeholder", color = Color.DarkGray)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        painter = painterResource(id = android.R.drawable.ic_menu_my_calendar), // Using system icon as fallback
-                                        contentDescription = null,
-                                        tint = Color.Gray,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        "${hive.participants.size}",
-                                        color = Color.Gray
-                                    ) // Removed unnecessary safe call
-                                    Spacer(modifier = Modifier.width(10.dp))
-                                    Icon(
-                                        painter = painterResource(id = android.R.drawable.ic_dialog_email), // Using system icon as fallback
-                                        contentDescription = null,
-                                        tint = Color.Gray,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("12", color = Color.Gray) // Placeholder comment count
-                                }
-                                Button(
-                                    onClick = {},
-                                    shape = RoundedCornerShape(20.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E2E2E))
-                                ) {
-                                    Text("View", color = Color.White, fontWeight = FontWeight.Bold)
+                // Show only hives where the user is the host
+                val userCreatedHives = createdHives.filter { it.hostUid == userId }
+                if (userCreatedHives.isEmpty()) {
+                    Text("No hives created yet.", color = Color.Gray)
+                } else {
+                    // Fetch and cache creator photoUrls
+                    userCreatedHives.forEach { hive ->
+                        LaunchedEffect(hive.hostUid) {
+                            if (!photoCache.containsKey(hive.hostUid)) {
+                                val userRef: DatabaseReference = FirebaseDatabase.getInstance().getReference("users").child(hive.hostUid)
+                                userRef.child("photoUrl").get().addOnSuccessListener { snapshot ->
+                                    val url = snapshot.getValue(String::class.java)
+                                    photoCache[hive.hostUid] = url
+                                }.addOnFailureListener {
+                                    photoCache[hive.hostUid] = null
                                 }
                             }
+                        }
+                    }
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 0.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        userCreatedHives.forEach { hive ->
+                            HiveCard(
+                                title = hive.title,
+                                creatorPhotoUrl = photoCache[hive.hostUid],
+                                membersCount = hive.participants.size,
+                                onJoinClick = {
+                                    val uid = sharedPref.getString("CURRENT_USER_UID", null)
+                                    if (uid != null) {
+                                        val dbRef = FirebaseDatabase.getInstance().getReference("hives").child(hive.hiveId)
+                                        dbRef.child("participants").get().addOnSuccessListener { snapshot ->
+                                            val participants = snapshot.children.mapNotNull { it.getValue(String::class.java) }.toMutableList()
+                                            if (!participants.contains(uid)) {
+                                                participants.add(uid)
+                                                dbRef.child("participants").setValue(participants)
+                                            }
+                                            val intent = Intent(context, com.example.zenhive.view.HiveGroupCallActivity::class.java)
+                                            intent.putExtra("HIVE_ID", hive.hiveId)
+                                            intent.putExtra("HIVE_TITLE", hive.title)
+                                            intent.putExtra("HIVE_OWNER", hive.hostName)
+                                            context.startActivity(intent)
+                                        }
+                                    } else {
+                                        android.widget.Toast.makeText(context, "User not logged in. Please login.", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            )
                         }
                     }
                 }

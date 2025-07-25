@@ -129,17 +129,19 @@ class HiveGroupCallActivity : ComponentActivity() {
                     ZegoExpressEngine.getEngine().muteMicrophone(isMicMuted)
                 },
                 onLeave = {
-                    val currentUser = FirebaseAuth.getInstance().currentUser
-                    if (currentUser != null) {
+                    // Fetch current user UID from SharedPreferences
+                    val sharedPref = getSharedPreferences("user_prefs", MODE_PRIVATE)
+                    val currentUserUid = sharedPref.getString("CURRENT_USER_UID", null)
+                    if (!currentUserUid.isNullOrBlank()) {
                         dbRef.child("participants").get().addOnSuccessListener { snapshot ->
                             val ids = snapshot.children.mapNotNull { it.getValue(String::class.java) }.toMutableList()
-                            ids.remove(currentUser.uid)
+                            ids.remove(currentUserUid)
                             dbRef.child("participants").setValue(ids)
                         }
                     }
-                    val intent = android.content.Intent(context, NavigationActivity::class.java)
+                    val intent = android.content.Intent(this, NavigationActivity::class.java)
                     intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
-                    context.startActivity(intent)
+                    this.startActivity(intent)
                 },
                 onInvite = { showInviteDialog = true }
             )
