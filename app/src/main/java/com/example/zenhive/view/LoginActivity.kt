@@ -226,7 +226,11 @@ class LoginActivity : ComponentActivity() {
                                                 .putString("CURRENT_USER_EMAIL", email)
                                                 .putString("CURRENT_USER_PASSWORD", password)
                                                 .putString("CURRENT_USER_UID", user.uid)
+                                                .putString("CURRENT_USER_DISPLAY_NAME", user.displayName ?: user.email ?: "Unknown")
                                                 .apply()
+                                            // Ensure displayName is set in Firebase users node
+                                            val userRef = com.google.firebase.database.FirebaseDatabase.getInstance().getReference("users").child(user.uid)
+                                            userRef.child("displayName").setValue(user.displayName ?: user.email ?: "Unknown")
                                             // No need to save to SharedPreferences since Firebase Auth handles the session
                                             context.startActivity(Intent(context, NavigationActivity::class.java))
                                             (context as? Activity)?.finish()
@@ -312,4 +316,3 @@ class LoginActivity : ComponentActivity() {
 }
 
 //Testing codes added
-
