@@ -47,7 +47,7 @@ fun ProfilePage(onNavigateToFeaturedHives: () -> Unit = {}) {
     // Fetch user information from Firebase
     // Try to get UID from SharedPreferences first, then fallback to FirebaseAuth
     val sharedPref = context.getSharedPreferences("user_prefs", android.content.Context.MODE_PRIVATE)
-    val sharedPrefUid = sharedPref.getString("uid", null)
+    val sharedPrefUid = sharedPref.getString("CURRENT_USER_UID", null)
     val userId = sharedPrefUid ?: FirebaseAuth.getInstance().currentUser?.uid
 
     LaunchedEffect(userId) {
